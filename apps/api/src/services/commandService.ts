@@ -1,0 +1,328 @@
+import { parseCommand, CommandKey } from "../engine/parsers/commandParser";
+import {
+  handleIpconfig,
+  handlePing,
+  handleSetGateway,
+  handleSetDns,
+  handleShowIpInterfaceBrief,
+  handleNoShutdown,
+} from "../engine/handlers";
+import { labSessionsService } from "./labSessionsService";
+import { labsService } from "./labsService";
+import { validateLabCompletion } from "../engine/validation/rulesEngine";
+
+type CliMode = "user" | "privileged" | "global_config" | "interface_config";
+
+type CliContext = {
+  mode: CliMode;
+  interfaceName?: string | null;
+};
+
+const allowedCommandsByDeviceType: Record<string, CommandKey[]> = {
+  pc: ["ipconfig", "ping", "set_default_gateway", "set_dns"],
+  router: [
+    "show_ip_interface_brief",
+    "enable",
+    "configure_terminal",
+    "interface",
+    "no_shutdown",
+    "exit",
+    "end",
+  ],
+  switch: [],
+};
+
+function getCommandError(deviceType: string, command: string) {
+  if (deviceType === "pc") {
+    return [
+      `'${command}' is not recognized as an internal or external command.`,
+      "Hint: Select a PC command such as 'ipconfig' or 'ping <target>'.",
+    ].join("\n");
+  }
+
+  if (deviceType === "router") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: Check the current CLI mode and available router commands.",
+    ].join("\n");
+  }
+
+  return "Command not supported on this device.";
+}
+
+function getUnknownCommandFeedback(command: string) {
+  return [
+    `Unknown command: ${command}`,
+    "Hint: Use the command suggestions above or press Tab after typing a prefix.",
+  ].join("\n");
+}
+
+function getRouterContext(session: any, deviceId: string): CliContext {
+  if (!session.cliContexts) {
+    session.cliContexts = {};
+  }
+
+  if (!session.cliContexts[deviceId]) {
+    session.cliContexts[deviceId] = {
+      mode: "user",
+      interfaceName: null,
+    };
+  }
+
+  return session.cliContexts[deviceId];
+}
+
+function resetRouterContext(context: CliContext) {
+  context.mode = "user";
+  context.interfaceName = null;
+}
+
+function moveRouterContextBack(context: CliContext) {
+  if (context.mode === "interface_config") {
+    context.mode = "global_config";
+    context.interfaceName = null;
+    return;
+  }
+
+  if (context.mode === "global_config") {
+    context.mode = "privileged";
+    context.interfaceName = null;
+    return;
+  }
+
+  if (context.mode === "privileged") {
+    context.mode = "user";
+    context.interfaceName = null;
+    return;
+  }
+
+  context.mode = "user";
+  context.interfaceName = null;
+}
+
+function getConfigureTerminalModeError(context: CliContext) {
+  if (context.mode === "user") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: Enter privileged EXEC mode first using 'enable'.",
+    ].join("\n");
+  }
+
+  if (context.mode === "global_config") {
+    return "Already in global configuration mode.";
+  }
+
+  if (context.mode === "interface_config") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: Use 'exit' to return to global configuration mode first.",
+    ].join("\n");
+  }
+
+  return "% Invalid input detected at '^' marker.";
+}
+
+function getInterfaceModeError(context: CliContext) {
+  if (context.mode === "user") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: Use 'enable', then 'configure terminal' before selecting an interface.",
+    ].join("\n");
+  }
+
+  if (context.mode === "privileged") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: Enter global configuration mode first using 'configure terminal'.",
+    ].join("\n");
+  }
+
+  if (context.mode === "interface_config") {
+    return [
+      "% Invalid input detected at '^' marker.",
+      "Hint: You are already in interface configuration mode. Use 'exit' to choose another interface.",
+    ].join("\n");
+  }
+
+  return "% Invalid input detected at '^' marker.";
+}
+
+function getNoShutdownModeError(context: CliContext) {
+  if (context.mode === "user") {
+    return [
+      "% Incomplete command.",
+      "Hint: Use 'enable' → 'configure terminal' → 'interface g0/0' before 'no shutdown'.",
+    ].join("\n");
+  }
+
+  if (context.mode === "privileged") {
+    return [
+      "% Incomplete command.",
+      "Hint: Enter configuration mode first using 'configure terminal', then select an interface.",
+    ].join("\n");
+  }
+
+  if (context.mode === "global_config") {
+    return [
+      "% Incomplete command.",
+      "Hint: Select an interface first using 'interface g0/0'.",
+    ].join("\n");
+  }
+
+  return "% Incomplete command.";
+}
+
+class CommandService {
+  executeCommand(sessionId: string, deviceId: string, rawCommand: string) {
+    const session = labSessionsService.getSession(sessionId);
+
+    if (!session) {
+      return { ok: false, output: "Session not found" };
+    }
+
+    const lab = labsService.getLabById(session.labId);
+
+    if (!lab) {
+      return { ok: false, output: "Lab definition not found." };
+    }
+
+    if (session.status === "completed") {
+      return {
+        ok: false,
+        output: "This lab session is already complete.",
+      };
+    }
+
+    const parsed = parseCommand(rawCommand);
+
+    if (!parsed) {
+      return {
+        ok: false,
+        output: getUnknownCommandFeedback(rawCommand),
+      };
+    }
+
+    const device = session.state.devices[deviceId];
+
+    if (!device) {
+      return {
+        ok: false,
+        output: "Device not found.",
+      };
+    }
+
+    const allowedCommands = allowedCommandsByDeviceType[device.type] || [];
+
+    if (!allowedCommands.includes(parsed.commandKey)) {
+      return {
+        ok: false,
+        deviceId,
+        command: rawCommand,
+        output: getCommandError(device.type, rawCommand),
+      };
+    }
+
+    let output = "";
+
+    if (device.type === "router") {
+      const context = getRouterContext(session, deviceId);
+
+      if (parsed.commandKey === "enable") {
+        if (context.mode === "privileged") {
+          output = "Already in privileged EXEC mode.";
+        } else if (context.mode === "global_config" || context.mode === "interface_config") {
+          output = [
+            "% Invalid input detected at '^' marker.",
+            "Hint: You are already in configuration mode. Use 'end' to return to user mode.",
+          ].join("\n");
+        } else {
+          context.mode = "privileged";
+          context.interfaceName = null;
+          output = "Entered privileged EXEC mode.";
+        }
+      } else if (parsed.commandKey === "configure_terminal") {
+        if (context.mode !== "privileged") {
+          output = getConfigureTerminalModeError(context);
+        } else {
+          context.mode = "global_config";
+          context.interfaceName = null;
+          output = "Enter configuration commands, one per line. End with CNTL/Z.";
+        }
+      } else if (parsed.commandKey === "interface") {
+        if (context.mode !== "global_config") {
+          output = getInterfaceModeError(context);
+        } else if (!device.interfaces?.[parsed.args.interfaceName]) {
+          output = [
+            `% Invalid interface ${parsed.args.interfaceName}`,
+            "Hint: Use 'show ip interface brief' to view available interfaces.",
+          ].join("\n");
+        } else {
+          context.mode = "interface_config";
+          context.interfaceName = parsed.args.interfaceName;
+          output = `Entered interface configuration mode for ${parsed.args.interfaceName}.`;
+        }
+      } else if (parsed.commandKey === "no_shutdown") {
+        if (context.mode !== "interface_config") {
+          output = getNoShutdownModeError(context);
+        } else {
+          output = handleNoShutdown(device, context.interfaceName || undefined);
+        }
+      } else if (parsed.commandKey === "show_ip_interface_brief") {
+        output = handleShowIpInterfaceBrief(device);
+      } else if (parsed.commandKey === "exit") {
+        moveRouterContextBack(context);
+        output = "Exited current mode.";
+      } else if (parsed.commandKey === "end") {
+        resetRouterContext(context);
+        output = "Returned to user EXEC mode.";
+      }
+    } else if (parsed.commandKey === "ipconfig") {
+      output = handleIpconfig(device);
+    } else if (parsed.commandKey === "ping") {
+      output = handlePing(device, parsed.args.target, session.state);
+    } else if (parsed.commandKey === "set_default_gateway") {
+      output = handleSetGateway(device, parsed.args.ip);
+    } else if (parsed.commandKey === "set_dns") {
+      output = handleSetDns(device, parsed.args.ip);
+    } else {
+      output = "Command recognized but not implemented.";
+    }
+
+    session.commandHistory.push({
+      deviceId,
+      command: rawCommand,
+      output,
+      timestamp: new Date().toISOString(),
+    });
+
+    const validation = validateLabCompletion(lab, session);
+
+    if (validation.completed) {
+      session.status = "completed";
+      session.completedAt = new Date().toISOString();
+
+      output = [
+        output,
+        "",
+        "✔ Lab objective completed.",
+        lab.scenario.completionMessage,
+      ].join("\n");
+    }
+
+    return {
+      ok: true,
+      deviceId,
+      command: rawCommand,
+      output,
+      status: session.status,
+      score: session.score,
+      completed: session.status === "completed",
+      completionMessage:
+        session.status === "completed"
+          ? lab.scenario.completionMessage
+          : undefined,
+    };
+  }
+}
+
+export const commandService = new CommandService();

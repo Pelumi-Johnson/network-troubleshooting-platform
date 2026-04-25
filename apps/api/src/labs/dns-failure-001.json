@@ -1,0 +1,103 @@
+{
+  "id": "dns-failure-001",
+  "slug": "dns-failure",
+  "title": "DNS Failure: Websites Not Resolving",
+  "difficulty": "medium",
+  "category": "dns",
+  "estimatedMinutes": 12,
+  "scenario": {
+    "summary": "A user can reach external IP addresses, but website names are not resolving.",
+    "objective": "Diagnose and fix the DNS configuration on the PC.",
+    "completionMessage": "DNS fixed. The PC can now resolve domain names."
+  },
+  "topology": {
+    "devices": [
+      {
+        "id": "pc1",
+        "label": "PC1",
+        "type": "pc",
+        "position": { "x": 100, "y": 150 }
+      },
+      {
+        "id": "r1",
+        "label": "R1",
+        "type": "router",
+        "position": { "x": 400, "y": 150 }
+      }
+    ],
+    "links": [
+      {
+        "id": "link1",
+        "from": "pc1",
+        "to": "r1"
+      }
+    ]
+  },
+  "initialState": {
+    "devices": {
+      "pc1": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.10",
+          "mask": "255.255.255.0",
+          "gateway": "192.168.1.1",
+          "dns": "192.168.1.254"
+        }
+      },
+      "r1": {
+        "type": "router",
+        "interfaces": {
+          "g0/0": {
+            "ip": "192.168.1.1",
+            "mask": "255.255.255.0",
+            "status": "up"
+          }
+        }
+      }
+    }
+  },
+  "interaction": {
+    "allowedCommands": {
+      "pc": ["ipconfig", "ping {ip}", "ping {domain}", "set dns {ip}"],
+      "switch": [],
+      "router": ["show ip interface brief"]
+    },
+    "editableFields": [
+      {
+        "deviceId": "pc1",
+        "path": "network.dns",
+        "command": "set dns {ip}"
+      }
+    ]
+  },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Check whether IP connectivity works before checking name resolution."
+    },
+    {
+      "level": 2,
+      "text": "If pinging an IP works but pinging a domain fails, suspect DNS."
+    },
+    {
+      "level": 3,
+      "text": "Set the DNS server to 8.8.8.8."
+    }
+  ],
+  "successConditions": {
+    "mode": "all",
+    "rules": [
+      {
+        "type": "fieldEquals",
+        "deviceId": "pc1",
+        "path": "network.dns",
+        "value": "8.8.8.8"
+      }
+    ]
+  },
+  "scoring": {
+    "baseScore": 100,
+    "hintPenalty": 10,
+    "maxHints": 3
+  }
+}

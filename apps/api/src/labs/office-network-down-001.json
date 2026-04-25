@@ -1,0 +1,139 @@
+{
+  "id": "office-network-down-001",
+  "slug": "office-network-down",
+  "title": "Office Network Down: No Internet Access",
+  "difficulty": "easy",
+  "category": "default-gateway",
+  "estimatedMinutes": 10,
+  "scenario": {
+    "summary": "Users in a small office cannot access external networks. Internal connectivity appears normal.",
+    "objective": "Diagnose and restore connectivity to external networks.",
+    "completionMessage": "Network restored. Devices can now reach external networks."
+  },
+  "topology": {
+    "devices": [
+      {
+        "id": "pc1",
+        "label": "PC1",
+        "type": "pc",
+        "position": { "x": 100, "y": 120 }
+      },
+      {
+        "id": "pc2",
+        "label": "PC2",
+        "type": "pc",
+        "position": { "x": 100, "y": 280 }
+      },
+      {
+        "id": "sw1",
+        "label": "SW1",
+        "type": "switch",
+        "position": { "x": 350, "y": 200 }
+      },
+      {
+        "id": "r1",
+        "label": "R1",
+        "type": "router",
+        "position": { "x": 620, "y": 200 }
+      }
+    ],
+    "links": [
+      { "id": "l1", "from": "pc1", "to": "sw1" },
+      { "id": "l2", "from": "pc2", "to": "sw1" },
+      { "id": "l3", "from": "sw1", "to": "r1" }
+    ]
+  },
+  "initialState": {
+    "devices": {
+      "pc1": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.10",
+          "mask": "255.255.255.0",
+          "gateway": "192.168.1.254"
+        }
+      },
+      "pc2": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.11",
+          "mask": "255.255.255.0",
+          "gateway": "192.168.1.254"
+        }
+      },
+      "sw1": {
+        "type": "switch",
+        "ports": {
+          "f0/1": { "status": "up" },
+          "f0/2": { "status": "up" },
+          "f0/24": { "status": "up" }
+        }
+      },
+      "r1": {
+        "type": "router",
+        "interfaces": {
+          "g0/0": {
+            "ip": "192.168.1.1",
+            "mask": "255.255.255.0",
+            "status": "up"
+          }
+        }
+      }
+    }
+  },
+  "interaction": {
+    "allowedCommands": {
+      "pc": ["ipconfig", "ping {ip}", "set default-gateway {ip}"],
+      "switch": [],
+      "router": ["show ip interface brief"]
+    },
+    "editableFields": [
+      {
+        "deviceId": "pc1",
+        "path": "network.gateway",
+        "command": "set default-gateway {ip}"
+      },
+      {
+        "deviceId": "pc2",
+        "path": "network.gateway",
+        "command": "set default-gateway {ip}"
+      }
+    ]
+  },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Check the IP settings on the PCs."
+    },
+    {
+      "level": 2,
+      "text": "Internal connectivity is not the same as external connectivity."
+    },
+    {
+      "level": 3,
+      "text": "Verify the default gateway configured on each PC."
+    }
+  ],
+  "successConditions": {
+    "mode": "all",
+    "rules": [
+      {
+        "type": "fieldEquals",
+        "deviceId": "pc1",
+        "path": "network.gateway",
+        "value": "192.168.1.1"
+      },
+      {
+        "type": "fieldEquals",
+        "deviceId": "pc2",
+        "path": "network.gateway",
+        "value": "192.168.1.1"
+      }
+    ]
+  },
+  "scoring": {
+    "baseScore": 100,
+    "hintPenalty": 10,
+    "maxHints": 3
+  }
+}

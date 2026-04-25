@@ -1,0 +1,109 @@
+{
+  "id": "interface-down-001",
+  "slug": "router-interface-down",
+  "title": "Router Interface Down",
+  "difficulty": "easy",
+  "category": "routing",
+  "estimatedMinutes": 10,
+  "scenario": {
+    "summary": "PC cannot reach the default gateway because the router interface is down.",
+    "objective": "Use router CLI modes to enter interface configuration and bring the interface up.",
+    "completionMessage": "Interface is up. Network connectivity restored."
+  },
+  "topology": {
+    "devices": [
+      {
+        "id": "pc1",
+        "type": "pc",
+        "label": "PC1",
+        "position": { "x": 100, "y": 150 }
+      },
+      {
+        "id": "r1",
+        "type": "router",
+        "label": "R1",
+        "position": { "x": 400, "y": 150 }
+      }
+    ],
+    "links": [
+      {
+        "id": "link1",
+        "from": "pc1",
+        "to": "r1"
+      }
+    ]
+  },
+  "initialState": {
+    "devices": {
+      "pc1": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.10",
+          "mask": "255.255.255.0",
+          "gateway": "192.168.1.1"
+        }
+      },
+      "r1": {
+        "type": "router",
+        "interfaces": {
+          "g0/0": {
+            "ip": "192.168.1.1",
+            "mask": "255.255.255.0",
+            "status": "down"
+          }
+        }
+      }
+    }
+  },
+  "interaction": {
+    "allowedCommands": {
+      "pc": ["ipconfig", "ping {ip}"],
+      "switch": [],
+      "router": [
+        "show ip interface brief",
+        "enable",
+        "configure terminal",
+        "interface g0/0",
+        "no shutdown",
+        "end"
+      ]
+    },
+    "editableFields": [
+      {
+        "deviceId": "r1",
+        "path": "interfaces.g0/0.status",
+        "command": "no shutdown"
+      }
+    ]
+  },
+  "successConditions": {
+    "mode": "all",
+    "rules": [
+      {
+        "type": "fieldEquals",
+        "deviceId": "r1",
+        "path": "interfaces.g0/0.status",
+        "value": "up"
+      }
+    ]
+  },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Check the router interface status."
+    },
+    {
+      "level": 2,
+      "text": "Enter privileged mode, then global configuration mode."
+    },
+    {
+      "level": 3,
+      "text": "Use: enable → configure terminal → interface g0/0 → no shutdown."
+    }
+  ],
+  "scoring": {
+    "baseScore": 100,
+    "hintPenalty": 10,
+    "maxHints": 3
+  }
+}
