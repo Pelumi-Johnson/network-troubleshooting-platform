@@ -9,12 +9,14 @@ type CliContext = {
   interfaceName?: string | null;
 };
 
+export type LabSessionStatus = "in_progress" | "completed" | "abandoned";
+
 export type LabSession = {
   sessionId: string;
   labId: string;
   labSlug: string;
   userId: string;
-  status: "in_progress" | "completed";
+  status: LabSessionStatus;
   selectedDeviceId: string | null;
   score: number;
   hintsUsed: number;
@@ -50,7 +52,7 @@ function toSession(record: any): LabSession {
     labId: record.labId,
     labSlug: record.labSlug,
     userId: record.userId,
-    status: record.status,
+    status: record.status as LabSessionStatus,
     selectedDeviceId: record.selectedDevice || null,
     score: record.score,
     hintsUsed: record.hintsUsed,
@@ -73,6 +75,18 @@ class LabSessionsService {
     }
 
     const demoUser = await identityService.getDemoUser();
+
+    await prisma.labSession.updateMany({
+      where: {
+        labSlug: lab.slug,
+        userId: demoUser.id,
+        status: "in_progress",
+      },
+      data: {
+        status: "abandoned",
+        completedAt: new Date(),
+      },
+    });
 
     const initialState = cloneData(lab.initialState);
     const cliContexts = buildInitialCliContexts(initialState);
@@ -108,6 +122,64 @@ class LabSessionsService {
     }
 
     return toSession(session);
+  }
+
+  async getActiveSessions(): Promise<LabSession[]> {
+    const demoUser = await identityService.getDemoUser();
+
+    const sessions = await prisma.labSession.findMany({
+      where: {
+        userId: demoUser.id,
+        status: "in_progress",
+      },
+      orderBy: {
+        startedAt: "desc",
+      },
+    });
+
+    return sessions.map(toSession);
+  }
+
+  async getActiveSessionBySlug(slug: string): Promise<LabSession | null> {
+    const demoUser = await identityService.getDemoUser();
+
+    const session = await prisma.labSession.findFirst({
+      where: {
+        userId: demoUser.id,
+        labSlug: slug,
+        status: "in_progress",
+      },
+      orderBy: {
+        startedAt: "desc",
+      },
+    });
+
+    if (!session) {
+      return null;
+    }
+
+    return toSession(session);
+  }
+
+  async clearActiveSession(slug: string) {
+    const demoUser = await identityService.getDemoUser();
+
+    await prisma.labSession.updateMany({
+      where: {
+        userId: demoUser.id,
+        labSlug: slug,
+        status: "in_progress",
+      },
+      data: {
+        status: "abandoned",
+        completedAt: new Date(),
+      },
+    });
+
+    return {
+      ok: true,
+      labSlug: slug,
+    };
   }
 
   async updateSession(session: LabSession): Promise<LabSession> {

@@ -120,11 +120,16 @@ export default function LabPage() {
     if (savedSessionId) {
       try {
         const savedSession = (await getLabSession(savedSessionId)) as LabSession;
-        setLab(labData);
-        setSession(savedSession);
-        setLogs(getLogsFromSession(savedSession));
-        setLoading(false);
-        return;
+
+        if (savedSession.labSlug === slug && savedSession.status !== "abandoned") {
+          setLab(labData);
+          setSession(savedSession);
+          setLogs(getLogsFromSession(savedSession));
+          setLoading(false);
+          return;
+        }
+
+        localStorage.removeItem(storageKey);
       } catch {
         localStorage.removeItem(storageKey);
       }
@@ -152,11 +157,18 @@ export default function LabPage() {
 
           if (cancelled) return;
 
-          setLab(labData);
-          setSession(savedSession);
-          setLogs(getLogsFromSession(savedSession));
-          setLoading(false);
-          return;
+          if (
+            savedSession.labSlug === labSlug &&
+            savedSession.status !== "abandoned"
+          ) {
+            setLab(labData);
+            setSession(savedSession);
+            setLogs(getLogsFromSession(savedSession));
+            setLoading(false);
+            return;
+          }
+
+          localStorage.removeItem(storageKey);
         } catch {
           localStorage.removeItem(storageKey);
         }
@@ -209,6 +221,20 @@ export default function LabPage() {
           deviceId,
           command,
           output: "Lab is already completed. Start a new session.",
+          ok: false,
+        },
+      ]);
+      setCommand("");
+      return;
+    }
+
+    if (session.status === "abandoned") {
+      setLogs((prev) => [
+        ...prev,
+        {
+          deviceId,
+          command,
+          output: "This session was abandoned. Start a new session.",
           ok: false,
         },
       ]);

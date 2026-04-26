@@ -1,10 +1,42 @@
 const API_BASE_URL = "http://localhost:5000/api";
 
+export type ActiveLabSession = {
+  sessionId: string;
+  labId: string;
+  labSlug: string;
+  status: string;
+  score: number;
+  hintsUsed: number;
+  startedAt: string;
+};
+
 export async function getLabSession(sessionId: string) {
   const response = await fetch(`${API_BASE_URL}/lab-sessions/${sessionId}`);
 
   if (!response.ok) {
-    throw new Error("Failed to fetch lab session");
+    throw new Error("Failed to load lab session");
+  }
+
+  return response.json();
+}
+
+export async function getActiveLabSessions(): Promise<ActiveLabSession[]> {
+  const response = await fetch(`${API_BASE_URL}/lab-sessions/active`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load active lab sessions");
+  }
+
+  return response.json();
+}
+
+export async function clearActiveLabSession(labSlug: string) {
+  const response = await fetch(`${API_BASE_URL}/lab-sessions/active/${labSlug}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to clear active lab session");
   }
 
   return response.json();
@@ -35,7 +67,5 @@ export async function requestHint(sessionId: string) {
     method: "POST",
   });
 
-  const result = await response.json();
-
-  return result;
+  return response.json();
 }

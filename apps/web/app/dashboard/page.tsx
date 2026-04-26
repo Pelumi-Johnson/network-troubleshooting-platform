@@ -6,9 +6,15 @@ import { getAllLabs } from "@/lib/api/labsApi";
 import {
   clearProgress,
   deleteProgress,
+  getAttempts,
   getProgress,
+  type LabAttempt,
   type LabProgress,
 } from "@/lib/api/progressApi";
+import {
+  clearActiveLabSession,
+  getActiveLabSessions,
+} from "@/lib/api/labSessionsApi";
 
 type LabSummary = {
   id: string;
@@ -53,9 +59,24 @@ function progressListToMap(progressList: LabProgress[]) {
   return progressMap;
 }
 
+function attemptsListToMap(attemptsList: LabAttempt[]) {
+  const attemptsMap: Record<string, LabAttempt[]> = {};
+
+  for (const attempt of attemptsList) {
+    if (!attemptsMap[attempt.labSlug]) {
+      attemptsMap[attempt.labSlug] = [];
+    }
+
+    attemptsMap[attempt.labSlug].push(attempt);
+  }
+
+  return attemptsMap;
+}
+
 export default function DashboardPage() {
   const [labs, setLabs] = useState<LabSummary[]>([]);
   const [progress, setProgress] = useState<Record<string, LabProgress>>({});
+  const [attempts, setAttempts] = useState<Record<string, LabAttempt[]>>({});
   const [activeSessions, setActiveSessions] = useState<Record<string, boolean>>(
     {}
   );
@@ -69,19 +90,30 @@ export default function DashboardPage() {
       try {
         const labData = await getAllLabs();
         const progressData = await getProgress();
+        const attemptsData = await getAttempts();
+        const activeSessionData = await getActiveLabSessions();
 
         if (cancelled) return;
 
         const sessionMap: Record<string, boolean> = {};
 
-        for (const lab of labData) {
-          sessionMap[lab.slug] = Boolean(
-            localStorage.getItem(getActiveSessionKey(lab.slug))
+        for (const session of activeSessionData) {
+          sessionMap[session.labSlug] = true;
+          localStorage.setItem(
+            getActiveSessionKey(session.labSlug),
+            session.sessionId
           );
+        }
+
+        for (const lab of labData) {
+          if (!sessionMap[lab.slug]) {
+            localStorage.removeItem(getActiveSessionKey(lab.slug));
+          }
         }
 
         setLabs(labData);
         setProgress(progressListToMap(progressData));
+        setAttempts(attemptsListToMap(attemptsData));
         setActiveSessions(sessionMap);
         setError("");
       } catch (err) {
@@ -110,6 +142,7 @@ export default function DashboardPage() {
     await clearProgress();
 
     for (const lab of labs) {
+      await clearActiveLabSession(lab.slug);
       localStorage.removeItem(getActiveSessionKey(lab.slug));
     }
 
@@ -119,6 +152,8 @@ export default function DashboardPage() {
 
   async function handleRetry(labSlug: string) {
     await deleteProgress(labSlug);
+    await clearActiveLabSession(labSlug);
+
     localStorage.removeItem(getActiveSessionKey(labSlug));
 
     setProgress((prev) => {
@@ -140,6 +175,11 @@ export default function DashboardPage() {
   ).length;
 
   const notStartedCount = labs.length - completedCount - inProgressCount;
+
+  const totalAttempts = Object.values(attempts).reduce(
+    (total, labAttempts) => total + labAttempts.length,
+    0
+  );
 
   const averageScore =
     completedCount > 0
@@ -187,7 +227,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold">Your Progress</h2>
               <p className="text-slate-400 mt-1">
-                Track completion, scores, and active lab sessions.
+                Track completion, scores, active sessions, and attempts.
               </p>
             </div>
 
@@ -204,7 +244,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-5 mb-10">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <p className="text-slate-400 text-sm mb-2">Available Labs</p>
             <p className="text-3xl font-bold">{labs.length}</p>
@@ -228,6 +268,13 @@ export default function DashboardPage() {
             <p className="text-slate-400 text-sm mb-2">Not Started</p>
             <p className="text-3xl font-bold text-slate-300">
               {notStartedCount}
+            </p>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <p className="text-slate-400 text-sm mb-2">Attempts</p>
+            <p className="text-3xl font-bold text-purple-400">
+              {totalAttempts}
             </p>
           </div>
 
@@ -263,6 +310,7 @@ export default function DashboardPage() {
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {labs.map((lab) => {
               const labProgress = progress[lab.slug];
+              const labAttempts = attempts[lab.slug] || [];
               const completed = Boolean(labProgress);
               const inProgress = Boolean(activeSessions[lab.slug]) && !completed;
 
@@ -308,17 +356,20 @@ export default function DashboardPage() {
                     <span className="text-slate-300">{lab.category}</span>
                   </p>
 
-                  <div className="h-32 rounded-xl bg-slate-950 border border-slate-800 mb-5 flex items-center justify-center px-4 text-center">
+                  <div className="h-36 rounded-xl bg-slate-950 border border-slate-800 mb-5 flex items-center justify-center px-4 text-center">
                     {completed && labProgress ? (
                       <div>
                         <p className="text-green-400 font-bold mb-1">
                           Completed
                         </p>
                         <p className="text-slate-300 text-sm">
-                          Score: {labProgress.score}
+                          Best Score: {labProgress.score}
+                        </p>
+                        <p className="text-slate-400 text-sm">
+                          Attempts: {labAttempts.length}
                         </p>
                         <p className="text-slate-500 text-xs mt-1">
-                          Completed: {formatDate(labProgress.completedAt)}
+                          Last Completed: {formatDate(labProgress.completedAt)}
                         </p>
                       </div>
                     ) : inProgress ? (
@@ -329,6 +380,9 @@ export default function DashboardPage() {
                         <p className="text-slate-500 text-sm">
                           Continue where you left off.
                         </p>
+                        <p className="text-slate-500 text-sm">
+                          Attempts: {labAttempts.length}
+                        </p>
                       </div>
                     ) : (
                       <div>
@@ -337,6 +391,9 @@ export default function DashboardPage() {
                         </p>
                         <p className="text-slate-500 text-sm">
                           Start a new troubleshooting attempt.
+                        </p>
+                        <p className="text-slate-500 text-sm">
+                          Attempts: {labAttempts.length}
                         </p>
                       </div>
                     )}

@@ -7,11 +7,28 @@ export type LabProgress = {
   completedAt: string;
 };
 
+export type LabAttempt = {
+  id: string;
+  labSlug: string;
+  score: number;
+  completedAt: string;
+};
+
 export async function getProgress(): Promise<LabProgress[]> {
   const response = await fetch(`${API_BASE_URL}/progress`);
 
   if (!response.ok) {
     throw new Error("Failed to load progress");
+  }
+
+  return response.json();
+}
+
+export async function getAttempts(): Promise<LabAttempt[]> {
+  const response = await fetch(`${API_BASE_URL}/progress/attempts`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load attempts");
   }
 
   return response.json();
@@ -52,6 +69,18 @@ export async function clearProgress() {
 
   if (!response.ok) {
     throw new Error("Failed to clear progress");
+  }
+
+  return response.json();
+}
+
+export async function clearAttempts() {
+  const response = await fetch(`${API_BASE_URL}/progress/attempts`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to clear attempts");
   }
 
   return response.json();

@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import { labSessionsService } from "../services/labSessionsService";
 import { commandService } from "../services/commandService";
-import { labsService } from "../services/labsService";
 
 export const labSessionsController = {
   async startSession(req: Request, res: Response): Promise<void> {
@@ -42,6 +41,43 @@ export const labSessionsController = {
     }
   },
 
+  async getActiveSessions(req: Request, res: Response): Promise<void> {
+    try {
+      const sessions = await labSessionsService.getActiveSessions();
+
+      res.json(
+        sessions.map((session) => ({
+          sessionId: session.sessionId,
+          labId: session.labId,
+          labSlug: session.labSlug,
+          status: session.status,
+          score: session.score,
+          hintsUsed: session.hintsUsed,
+          startedAt: session.startedAt,
+        }))
+      );
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to get active sessions",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+
+  async clearActiveSession(req: Request, res: Response): Promise<void> {
+    try {
+      const labSlug = String(req.params.labSlug);
+      const result = await labSessionsService.clearActiveSession(labSlug);
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to clear active session",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+
   async executeCommand(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = String(req.params.sessionId);
@@ -64,75 +100,6 @@ export const labSessionsController = {
     } catch (error) {
       res.status(500).json({
         message: "Failed to execute command",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  },
-
-  async getHint(req: Request, res: Response): Promise<void> {
-    try {
-      const sessionId = String(req.params.sessionId);
-      const session = await labSessionsService.getSession(sessionId);
-
-      if (!session) {
-        res.status(404).json({
-          ok: false,
-          message: "Session not found.",
-        });
-        return;
-      }
-
-      if (session.status === "completed") {
-        res.status(400).json({
-          ok: false,
-          message: "Lab is already completed.",
-        });
-        return;
-      }
-
-      const lab = labsService.getLabById(session.labId);
-
-      if (!lab) {
-        res.status(404).json({
-          ok: false,
-          message: "Lab definition not found.",
-        });
-        return;
-      }
-
-      const hints = lab.hints || [];
-      const maxHints = lab.scoring?.maxHints || hints.length;
-
-      if (session.hintsUsed >= maxHints || session.hintsUsed >= hints.length) {
-        res.status(400).json({
-          ok: false,
-          message: "No more hints available.",
-        });
-        return;
-      }
-
-      const hint = hints[session.hintsUsed];
-
-      session.hintsUsed += 1;
-      session.score = Math.max(
-        0,
-        session.score - (lab.scoring?.hintPenalty || 0)
-      );
-
-      const updatedSession = await labSessionsService.updateSession(session);
-
-      res.json({
-        ok: true,
-        hintLevel: hint.level,
-        text: hint.text,
-        score: updatedSession.score,
-        hintsUsed: updatedSession.hintsUsed,
-        remainingHints: Math.max(0, maxHints - updatedSession.hintsUsed),
-      });
-    } catch (error) {
-      res.status(500).json({
-        ok: false,
-        message: "Failed to get hint",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }
