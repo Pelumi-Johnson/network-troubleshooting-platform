@@ -12,8 +12,10 @@ import {
   requestHint,
 } from "@/lib/api/labSessionsApi";
 
+type DeviceType = "pc" | "switch" | "router";
+
 type DeviceState = {
-  type: "pc" | "switch" | "router";
+  type: DeviceType;
   network?: {
     ip: string;
     mask: string;
@@ -27,6 +29,12 @@ type DeviceState = {
       mask?: string;
       status: "up" | "down";
       vlan?: string;
+    }
+  >;
+  ports?: Record<
+    string,
+    {
+      status: "up" | "down";
     }
   >;
 };
@@ -45,6 +53,22 @@ type SuccessRule = {
   value: string | number | boolean;
 };
 
+type TopologyDevice = {
+  id: string;
+  label: string;
+  type: DeviceType;
+  position: {
+    x: number;
+    y: number;
+  };
+};
+
+type TopologyLink = {
+  id: string;
+  from: string;
+  to: string;
+};
+
 type Lab = {
   id: string;
   slug: string;
@@ -53,9 +77,14 @@ type Lab = {
     summary: string;
     objective: string;
     completionMessage: string;
+    observedBehavior?: string[];
+  };
+  topology?: {
+    devices: TopologyDevice[];
+    links: TopologyLink[];
   };
   interaction?: {
-    allowedCommands?: Partial<Record<"pc" | "switch" | "router", string[]>>;
+    allowedCommands?: Partial<Record<DeviceType, string[]>>;
   };
   successConditions?: {
     mode: "all" | "any";
@@ -368,6 +397,7 @@ export default function LabPage() {
           deviceId={deviceId}
           setDeviceId={setDeviceId}
           devices={session?.state.devices}
+          topology={lab?.topology}
           getDeviceHealth={getDeviceHealth}
         />
 
