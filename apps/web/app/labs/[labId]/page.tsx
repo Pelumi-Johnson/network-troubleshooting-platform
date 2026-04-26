@@ -23,8 +23,10 @@ type DeviceState = {
   interfaces?: Record<
     string,
     {
-      ip: string;
+      ip?: string;
+      mask?: string;
       status: "up" | "down";
+      vlan?: string;
     }
   >;
 };
@@ -307,6 +309,16 @@ export default function LabPage() {
     if (lab?.slug === "dns-failure") {
       if (device.type === "pc") {
         return device.network?.dns === "8.8.8.8" ? "fixed" : "broken";
+      }
+
+      return "normal";
+    }
+
+    if (lab?.slug === "switch-port-down") {
+      if (device.type === "switch") {
+        return device.interfaces?.["f0/1"]?.status === "up"
+          ? "fixed"
+          : "broken";
       }
 
       return "normal";

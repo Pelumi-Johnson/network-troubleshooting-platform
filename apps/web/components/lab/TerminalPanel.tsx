@@ -1,3 +1,5 @@
+"use client";
+
 import { KeyboardEvent, RefObject, useState } from "react";
 
 type CliMode = "user" | "privileged" | "global_config" | "interface_config";
@@ -346,7 +348,6 @@ export function TerminalPanel({
               }}
               onKeyDown={handleKeyDown}
               autoFocus
-              placeholder=""
               className="flex-1 bg-transparent border-none outline-none text-slate-100 font-mono caret-green-400"
             />
           </div>
@@ -367,3 +368,5 @@ export function TerminalPanel({
     </section>
   );
 }
+
+export default TerminalPanel;

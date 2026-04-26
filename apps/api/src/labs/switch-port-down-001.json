@@ -1,0 +1,142 @@
+{
+  "id": "switch-port-down-001",
+  "slug": "switch-port-down",
+  "title": "Switch Port Shutdown",
+  "difficulty": "medium",
+  "category": "switching",
+  "estimatedMinutes": 12,
+  "scenario": {
+    "summary": "PC1 cannot communicate because the switch port connected to it is administratively down.",
+    "objective": "Use switch CLI commands to inspect interface status and bring port f0/1 back up.",
+    "completionMessage": "Switch port f0/1 is back up. PC1 connectivity is restored."
+  },
+  "topology": {
+    "devices": [
+      {
+        "id": "pc1",
+        "type": "pc",
+        "label": "PC1",
+        "position": { "x": 100, "y": 150 }
+      },
+      {
+        "id": "sw1",
+        "type": "switch",
+        "label": "SW1",
+        "position": { "x": 350, "y": 150 }
+      },
+      {
+        "id": "r1",
+        "type": "router",
+        "label": "R1",
+        "position": { "x": 600, "y": 150 }
+      }
+    ],
+    "links": [
+      {
+        "id": "link1",
+        "from": "pc1",
+        "to": "sw1"
+      },
+      {
+        "id": "link2",
+        "from": "sw1",
+        "to": "r1"
+      }
+    ]
+  },
+  "initialState": {
+    "devices": {
+      "pc1": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.10",
+          "mask": "255.255.255.0",
+          "gateway": "192.168.1.1"
+        }
+      },
+      "sw1": {
+        "type": "switch",
+        "interfaces": {
+          "f0/1": {
+            "status": "down",
+            "vlan": "1"
+          },
+          "f0/2": {
+            "status": "up",
+            "vlan": "1"
+          },
+          "f0/3": {
+            "status": "up",
+            "vlan": "1"
+          },
+          "f0/4": {
+            "status": "up",
+            "vlan": "1"
+          }
+        }
+      },
+      "r1": {
+        "type": "router",
+        "interfaces": {
+          "g0/0": {
+            "ip": "192.168.1.1",
+            "mask": "255.255.255.0",
+            "status": "up"
+          }
+        }
+      }
+    }
+  },
+  "interaction": {
+    "allowedCommands": {
+      "pc": ["ipconfig", "ping {ip}"],
+      "switch": [
+        "show interfaces status",
+        "show vlan brief",
+        "enable",
+        "configure terminal",
+        "interface f0/1",
+        "no shutdown",
+        "end"
+      ],
+      "router": ["show ip interface brief"]
+    },
+    "editableFields": [
+      {
+        "deviceId": "sw1",
+        "path": "interfaces.f0/1.status",
+        "command": "no shutdown"
+      }
+    ]
+  },
+  "successConditions": {
+    "mode": "all",
+    "rules": [
+      {
+        "type": "fieldEquals",
+        "deviceId": "sw1",
+        "path": "interfaces.f0/1.status",
+        "value": "up"
+      }
+    ]
+  },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Start by checking the switch interface status."
+    },
+    {
+      "level": 2,
+      "text": "Port f0/1 is connected to PC1. Check whether it is disabled."
+    },
+    {
+      "level": 3,
+      "text": "Use: enable → configure terminal → interface f0/1 → no shutdown."
+    }
+  ],
+  "scoring": {
+    "baseScore": 100,
+    "hintPenalty": 10,
+    "maxHints": 3
+  }
+}

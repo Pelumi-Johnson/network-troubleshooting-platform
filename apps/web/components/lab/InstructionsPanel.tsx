@@ -47,6 +47,14 @@ function getObservedBehavior(slug: string | undefined) {
     ];
   }
 
+  if (slug === "switch-port-down") {
+    return [
+      "PC1 appears isolated from the network.",
+      "The switch should be inspected for disabled ports.",
+      "Port f0/1 is the likely access port connected to PC1.",
+    ];
+  }
+
   return ["Troubleshoot the network and restore the expected service."];
 }
 
