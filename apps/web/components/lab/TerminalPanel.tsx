@@ -2,6 +2,8 @@
 
 import { KeyboardEvent, RefObject, useState } from "react";
 
+type DeviceType = "pc" | "switch" | "router";
+
 type CliMode = "user" | "privileged" | "global_config" | "interface_config";
 
 type CliContext = {
@@ -10,7 +12,7 @@ type CliContext = {
 };
 
 type DeviceState = {
-  type: "pc" | "switch" | "router";
+  type: DeviceType;
   network?: {
     ip: string;
     mask: string;
@@ -45,80 +47,128 @@ type Props = {
   deviceId: string;
   devices: Record<string, DeviceState> | undefined;
   cliContexts?: Record<string, CliContext>;
+  allowedCommands?: Partial<Record<DeviceType, string[]>>;
 };
 
-function getRouterSuggestions(mode: CliMode | undefined) {
-  if (mode === "user") {
-    return ["enable", "show ip interface brief"];
-  }
+const defaultAllowedCommands: Record<DeviceType, string[]> = {
+  pc: ["ipconfig", "ping 192.168.1.1"],
+  router: ["show ip interface brief", "enable"],
+  switch: ["show interfaces status", "show vlan brief", "enable"],
+};
 
-  if (mode === "privileged") {
-    return ["configure terminal", "show ip interface brief", "exit"];
-  }
-
-  if (mode === "global_config") {
-    return ["interface g0/0", "exit", "end"];
-  }
-
-  if (mode === "interface_config") {
-    return ["no shutdown", "exit", "end"];
-  }
-
-  return ["enable"];
+function normalizeCommand(command: string) {
+  return command.replace("{ip}", "192.168.1.1").trim();
 }
 
-function getSwitchSuggestions(mode: CliMode | undefined) {
-  if (mode === "user") {
-    return ["enable", "show interfaces status", "show vlan brief"];
-  }
-
-  if (mode === "privileged") {
-    return [
-      "configure terminal",
-      "show interfaces status",
-      "show vlan brief",
-      "exit",
-    ];
-  }
-
-  if (mode === "global_config") {
-    return ["interface f0/1", "interface f0/2", "exit", "end"];
-  }
-
-  if (mode === "interface_config") {
-    return ["shutdown", "no shutdown", "exit", "end"];
-  }
-
-  return ["enable"];
+function isConfigurationCommand(command: string) {
+  return (
+    command === "configure terminal" ||
+    command === "config t" ||
+    command === "conf t"
+  );
 }
 
-function getSuggestions(
-  deviceType: string | undefined,
-  device: DeviceState | undefined,
-  cliContext: CliContext | undefined
-) {
-  if (deviceType === "pc") {
-    const suggestions = ["ipconfig", "ping 192.168.1.1", "ping 8.8.8.8"];
+function isInterfaceCommand(command: string) {
+  return command.startsWith("interface ");
+}
 
-    if (device?.network?.dns !== undefined) {
-      suggestions.push("ping google.com");
-      suggestions.push("set dns 8.8.8.8");
-    } else {
-      suggestions.push("set default-gateway 192.168.1.1");
-    }
+function isInterfaceModeCommand(command: string) {
+  return command === "shutdown" || command === "no shutdown";
+}
 
-    return suggestions;
-  }
+function isUserOrPrivilegedCommand(command: string) {
+  return (
+    command === "enable" ||
+    command === "exit" ||
+    command.startsWith("show ") ||
+    command === "ipconfig" ||
+    command.startsWith("ping ") ||
+    command.startsWith("set ")
+  );
+}
 
-  if (deviceType === "router") {
-    return getRouterSuggestions(cliContext?.mode || "user");
-  }
-
-  if (deviceType === "switch") {
-    return getSwitchSuggestions(cliContext?.mode || "user");
+function getFallbackCommandForDns(device: DeviceState | undefined) {
+  if (device?.type === "pc" && device.network?.dns !== undefined) {
+    return ["ping google.com", "set dns 8.8.8.8"];
   }
 
   return [];
+}
+
+function getCommandsForDevice(
+  deviceType: DeviceType | undefined,
+  device: DeviceState | undefined,
+  allowedCommands?: Partial<Record<DeviceType, string[]>>
+) {
+  if (!deviceType) return [];
+
+  const commandsFromLab =
+    allowedCommands?.[deviceType] || defaultAllowedCommands[deviceType] || [];
+
+  const normalized = commandsFromLab.map(normalizeCommand);
+
+  return Array.from(
+    new Set([...normalized, ...getFallbackCommandForDns(device)])
+  );
+}
+
+function filterCommandsByMode(commands: string[], mode: CliMode | undefined) {
+  const currentMode = mode || "user";
+
+  if (currentMode === "user") {
+    return commands.filter((command) => {
+      if (command === "enable") return true;
+      if (command.startsWith("show ")) return true;
+      if (command === "ipconfig") return true;
+      if (command.startsWith("ping ")) return true;
+      if (command.startsWith("set ")) return true;
+      return false;
+    });
+  }
+
+  if (currentMode === "privileged") {
+    return commands.filter((command) => {
+      if (isConfigurationCommand(command)) return true;
+      if (command.startsWith("show ")) return true;
+      if (command === "exit") return true;
+      return false;
+    });
+  }
+
+  if (currentMode === "global_config") {
+    return commands.filter((command) => {
+      if (isInterfaceCommand(command)) return true;
+      if (command === "exit") return true;
+      if (command === "end") return true;
+      return false;
+    });
+  }
+
+  if (currentMode === "interface_config") {
+    return commands.filter((command) => {
+      if (isInterfaceModeCommand(command)) return true;
+      if (command === "exit") return true;
+      if (command === "end") return true;
+      return false;
+    });
+  }
+
+  return commands.filter(isUserOrPrivilegedCommand);
+}
+
+function getSuggestions(
+  deviceType: DeviceType | undefined,
+  device: DeviceState | undefined,
+  cliContext: CliContext | undefined,
+  allowedCommands?: Partial<Record<DeviceType, string[]>>
+) {
+  const commands = getCommandsForDevice(deviceType, device, allowedCommands);
+
+  if (deviceType === "pc") {
+    return commands;
+  }
+
+  return filterCommandsByMode(commands, cliContext?.mode);
 }
 
 function getPrompt(
@@ -184,6 +234,7 @@ export function TerminalPanel({
   deviceId,
   devices,
   cliContexts,
+  allowedCommands,
 }: Props) {
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(true);
@@ -191,7 +242,12 @@ export function TerminalPanel({
   const selectedDevice = devices?.[deviceId];
   const deviceType = selectedDevice?.type;
   const cliContext = cliContexts?.[deviceId];
-  const suggestions = getSuggestions(deviceType, selectedDevice, cliContext);
+  const suggestions = getSuggestions(
+    deviceType,
+    selectedDevice,
+    cliContext,
+    allowedCommands
+  );
   const prompt = getPrompt(deviceId, deviceType, cliContext);
 
   const deviceLogs = logs.filter((log) => log.deviceId === deviceId);
@@ -274,7 +330,8 @@ export function TerminalPanel({
               Command Shortcuts
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              Optional training aid. Hide them to practice from memory.
+              Loaded from this lab&apos;s allowed commands. Hide them to
+              practice from memory.
             </p>
           </div>
 
@@ -361,7 +418,7 @@ export function TerminalPanel({
       </div>
 
       <div className="border-t border-slate-800 bg-slate-950 px-5 py-3 flex items-center justify-between text-xs text-slate-600">
-        <span>Device-specific console</span>
+        <span>Lab-defined shortcuts</span>
         <span>Tab autocomplete</span>
         <span>↑ ↓ history</span>
       </div>

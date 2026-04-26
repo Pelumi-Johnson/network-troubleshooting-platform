@@ -54,6 +54,9 @@ type Lab = {
     objective: string;
     completionMessage: string;
   };
+  interaction?: {
+    allowedCommands?: Partial<Record<"pc" | "switch" | "router", string[]>>;
+  };
   successConditions?: {
     mode: "all" | "any";
     rules: SuccessRule[];
@@ -378,6 +381,7 @@ export default function LabPage() {
           deviceId={deviceId}
           devices={session?.state.devices}
           cliContexts={session?.cliContexts}
+          allowedCommands={lab?.interaction?.allowedCommands}
         />
       </div>
     </main>
