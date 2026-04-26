@@ -8,7 +8,23 @@ type ProgressRecord = {
   completedAt: Date;
 };
 
+type AttemptRecord = {
+  id: string;
+  labSlug: string;
+  score: number;
+  completedAt: Date;
+};
+
 function formatProgress(item: ProgressRecord) {
+  return {
+    id: item.id,
+    labSlug: item.labSlug,
+    score: item.score,
+    completedAt: item.completedAt.toISOString(),
+  };
+}
+
+function formatAttempt(item: AttemptRecord) {
   return {
     id: item.id,
     labSlug: item.labSlug,
@@ -33,8 +49,31 @@ class ProgressService {
     return progress.map((item: ProgressRecord) => formatProgress(item));
   }
 
+  async getAttempts() {
+    const demoUser = await identityService.getDemoUser();
+
+    const attempts = await prisma.labAttempt.findMany({
+      where: {
+        userId: demoUser.id,
+      },
+      orderBy: {
+        completedAt: "desc",
+      },
+    });
+
+    return attempts.map((item: AttemptRecord) => formatAttempt(item));
+  }
+
   async saveProgress(labSlug: string, score: number) {
     const demoUser = await identityService.getDemoUser();
+
+    await prisma.labAttempt.create({
+      data: {
+        labSlug,
+        userId: demoUser.id,
+        score,
+      },
+    });
 
     const existingProgress = await prisma.labProgress.findFirst({
       where: {
@@ -98,6 +137,20 @@ class ProgressService {
     const demoUser = await identityService.getDemoUser();
 
     await prisma.labProgress.deleteMany({
+      where: {
+        userId: demoUser.id,
+      },
+    });
+
+    return {
+      ok: true,
+    };
+  }
+
+  async clearAttempts() {
+    const demoUser = await identityService.getDemoUser();
+
+    await prisma.labAttempt.deleteMany({
       where: {
         userId: demoUser.id,
       },

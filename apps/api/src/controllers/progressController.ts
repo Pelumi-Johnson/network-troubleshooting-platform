@@ -14,6 +14,18 @@ export const progressController = {
     }
   },
 
+  async getAttempts(req: Request, res: Response): Promise<void> {
+    try {
+      const attempts = await progressService.getAttempts();
+      res.json(attempts);
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to get attempts",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+
   async saveProgress(req: Request, res: Response): Promise<void> {
     try {
       const { labSlug, score } = req.body;
@@ -67,6 +79,18 @@ export const progressController = {
     } catch (error) {
       res.status(500).json({
         message: "Failed to clear progress",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+
+  async clearAttempts(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await progressService.clearAttempts();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        message: "Failed to clear attempts",
         error: error instanceof Error ? error.message : "Unknown error",
       });
     }

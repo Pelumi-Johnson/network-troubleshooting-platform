@@ -16,6 +16,7 @@ model User {
 
   sessions LabSession[]
   progress LabProgress[]
+  attempts LabAttempt[]
 }
 
 model LabSession {
@@ -46,4 +47,14 @@ model LabProgress {
   user User? @relation(fields: [userId], references: [id])
 
   @@unique([labSlug, userId])
+}
+
+model LabAttempt {
+  id          String   @id @default(uuid())
+  labSlug     String
+  userId      String?
+  score       Int
+  completedAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }
