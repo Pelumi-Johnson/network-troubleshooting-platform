@@ -30,7 +30,17 @@ const allowedCommandsByDeviceType: Record<string, CommandKey[]> = {
     "exit",
     "end",
   ],
-  switch: [],
+  switch: [
+    "show_interfaces_status",
+    "show_vlan_brief",
+    "enable",
+    "configure_terminal",
+    "interface",
+    "shutdown",
+    "no_shutdown",
+    "exit",
+    "end",
+  ],
 };
 
 function getCommandError(deviceType: string, command: string) {
@@ -41,10 +51,10 @@ function getCommandError(deviceType: string, command: string) {
     ].join("\n");
   }
 
-  if (deviceType === "router") {
+  if (deviceType === "router" || deviceType === "switch") {
     return [
       "% Invalid input detected at '^' marker.",
-      "Hint: Check the current CLI mode and available router commands.",
+      `Hint: Check the current ${deviceType} CLI mode and available commands.`,
     ].join("\n");
   }
 
@@ -58,7 +68,7 @@ function getUnknownCommandFeedback(command: string) {
   ].join("\n");
 }
 
-function getRouterContext(session: any, deviceId: string): CliContext {
+function getCliContext(session: any, deviceId: string): CliContext {
   if (!session.cliContexts) {
     session.cliContexts = {};
   }
@@ -73,12 +83,12 @@ function getRouterContext(session: any, deviceId: string): CliContext {
   return session.cliContexts[deviceId];
 }
 
-function resetRouterContext(context: CliContext) {
+function resetContext(context: CliContext) {
   context.mode = "user";
   context.interfaceName = null;
 }
 
-function moveRouterContextBack(context: CliContext) {
+function moveContextBack(context: CliContext) {
   if (context.mode === "interface_config") {
     context.mode = "global_config";
     context.interfaceName = null;
@@ -148,29 +158,163 @@ function getInterfaceModeError(context: CliContext) {
   return "% Invalid input detected at '^' marker.";
 }
 
-function getNoShutdownModeError(context: CliContext) {
-  if (context.mode === "user") {
+function getInterfaceRequiredError(commandName: string) {
+  return [
+    "% Incomplete command.",
+    `Hint: Select an interface first using 'interface <name>' before '${commandName}'.`,
+  ].join("\n");
+}
+
+function ensureInterfaces(device: any) {
+  if (!device.interfaces) {
+    device.interfaces = {};
+  }
+
+  if (Object.keys(device.interfaces).length === 0 && device.type === "switch") {
+    device.interfaces = {
+      "f0/1": {
+        status: "up",
+        vlan: "1",
+      },
+      "f0/2": {
+        status: "up",
+        vlan: "1",
+      },
+      "f0/3": {
+        status: "up",
+        vlan: "1",
+      },
+      "f0/4": {
+        status: "up",
+        vlan: "1",
+      },
+    };
+  }
+}
+
+function handleShowInterfacesStatus(device: any) {
+  if (device.type !== "switch") {
+    return "% Invalid input detected at '^' marker.";
+  }
+
+  ensureInterfaces(device);
+
+  const lines = [
+    "Port      Name               Status       Vlan",
+    "--------- ------------------ ------------ ----",
+  ];
+
+  for (const [name, iface] of Object.entries(device.interfaces || {}) as any[]) {
+    const status = iface.status === "down" ? "disabled" : "connected";
+    const vlan = iface.vlan || "1";
+
+    lines.push(
+      `${name.padEnd(9)} ${"".padEnd(18)} ${status.padEnd(12)} ${vlan}`
+    );
+  }
+
+  return lines.join("\n");
+}
+
+function handleShowVlanBrief(device: any) {
+  if (device.type !== "switch") {
+    return "% Invalid input detected at '^' marker.";
+  }
+
+  ensureInterfaces(device);
+
+  const vlanMap: Record<string, string[]> = {};
+
+  for (const [name, iface] of Object.entries(device.interfaces || {}) as any[]) {
+    const vlan = iface.vlan || "1";
+
+    if (!vlanMap[vlan]) {
+      vlanMap[vlan] = [];
+    }
+
+    vlanMap[vlan].push(name);
+  }
+
+  const lines = [
+    "VLAN Name                             Status    Ports",
+    "---- -------------------------------- --------- -------------------------------",
+  ];
+
+  for (const [vlan, ports] of Object.entries(vlanMap)) {
+    const vlanName = vlan === "1" ? "default" : `VLAN${vlan}`;
+    lines.push(
+      `${vlan.padEnd(4)} ${vlanName.padEnd(32)} active    ${ports.join(", ")}`
+    );
+  }
+
+  return lines.join("\n");
+}
+
+function handleSwitchShutdown(device: any, interfaceName?: string) {
+  if (device.type !== "switch") {
+    return "% Invalid input detected at '^' marker.";
+  }
+
+  ensureInterfaces(device);
+
+  if (!interfaceName) {
+    return getInterfaceRequiredError("shutdown");
+  }
+
+  const iface = device.interfaces?.[interfaceName];
+
+  if (!iface) {
     return [
-      "% Incomplete command.",
-      "Hint: Use 'enable' → 'configure terminal' → 'interface g0/0' before 'no shutdown'.",
+      `% Invalid interface ${interfaceName}`,
+      "Hint: Use 'show interfaces status' to view available switch ports.",
     ].join("\n");
   }
 
-  if (context.mode === "privileged") {
+  if (iface.status === "down") {
+    return `${interfaceName} is already administratively down.`;
+  }
+
+  iface.status = "down";
+
+  return [
+    `${interfaceName} administratively shut down.`,
+    "✔ Interface is now disabled.",
+  ].join("\n");
+}
+
+function handleSwitchNoShutdown(device: any, interfaceName?: string) {
+  if (device.type !== "switch") {
+    return "% Invalid input detected at '^' marker.";
+  }
+
+  ensureInterfaces(device);
+
+  if (!interfaceName) {
+    return getInterfaceRequiredError("no shutdown");
+  }
+
+  const iface = device.interfaces?.[interfaceName];
+
+  if (!iface) {
     return [
-      "% Incomplete command.",
-      "Hint: Enter configuration mode first using 'configure terminal', then select an interface.",
+      `% Invalid interface ${interfaceName}`,
+      "Hint: Use 'show interfaces status' to view available switch ports.",
     ].join("\n");
   }
 
-  if (context.mode === "global_config") {
+  if (iface.status === "up") {
     return [
-      "% Incomplete command.",
-      "Hint: Select an interface first using 'interface g0/0'.",
+      `${interfaceName} is already up.`,
+      "✔ No change needed. Interface is already operational.",
     ].join("\n");
   }
 
-  return "% Incomplete command.";
+  iface.status = "up";
+
+  return [
+    `${interfaceName} brought up successfully.`,
+    "✔ Interface is now operational.",
+  ].join("\n");
 }
 
 class CommandService {
@@ -191,6 +335,13 @@ class CommandService {
       return {
         ok: false,
         output: "This lab session is already complete.",
+      };
+    }
+
+    if (session.status === "abandoned") {
+      return {
+        ok: false,
+        output: "This lab session was abandoned. Start a new session.",
       };
     }
 
@@ -227,8 +378,8 @@ class CommandService {
 
     let output = "";
 
-    if (device.type === "router") {
-      const context = getRouterContext(session, deviceId);
+    if (device.type === "router" || device.type === "switch") {
+      const context = getCliContext(session, deviceId);
 
       if (parsed.commandKey === "enable") {
         if (context.mode === "privileged") {
@@ -255,31 +406,47 @@ class CommandService {
           output = "Enter configuration commands, one per line. End with CNTL/Z.";
         }
       } else if (parsed.commandKey === "interface") {
+        ensureInterfaces(device);
+
         if (context.mode !== "global_config") {
           output = getInterfaceModeError(context);
         } else if (!device.interfaces?.[parsed.args.interfaceName]) {
           output = [
             `% Invalid interface ${parsed.args.interfaceName}`,
-            "Hint: Use 'show ip interface brief' to view available interfaces.",
+            device.type === "switch"
+              ? "Hint: Use 'show interfaces status' to view available switch ports."
+              : "Hint: Use 'show ip interface brief' to view available interfaces.",
           ].join("\n");
         } else {
           context.mode = "interface_config";
           context.interfaceName = parsed.args.interfaceName;
           output = `Entered interface configuration mode for ${parsed.args.interfaceName}.`;
         }
+      } else if (parsed.commandKey === "shutdown") {
+        if (context.mode !== "interface_config") {
+          output = getInterfaceRequiredError("shutdown");
+        } else {
+          output = handleSwitchShutdown(device, context.interfaceName || undefined);
+        }
       } else if (parsed.commandKey === "no_shutdown") {
         if (context.mode !== "interface_config") {
-          output = getNoShutdownModeError(context);
-        } else {
+          output = getInterfaceRequiredError("no shutdown");
+        } else if (device.type === "router") {
           output = handleNoShutdown(device, context.interfaceName || undefined);
+        } else {
+          output = handleSwitchNoShutdown(device, context.interfaceName || undefined);
         }
       } else if (parsed.commandKey === "show_ip_interface_brief") {
         output = handleShowIpInterfaceBrief(device);
+      } else if (parsed.commandKey === "show_interfaces_status") {
+        output = handleShowInterfacesStatus(device);
+      } else if (parsed.commandKey === "show_vlan_brief") {
+        output = handleShowVlanBrief(device);
       } else if (parsed.commandKey === "exit") {
-        moveRouterContextBack(context);
+        moveContextBack(context);
         output = "Exited current mode.";
       } else if (parsed.commandKey === "end") {
-        resetRouterContext(context);
+        resetContext(context);
         output = "Returned to user EXEC mode.";
       }
     } else if (parsed.commandKey === "ipconfig") {

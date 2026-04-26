@@ -18,8 +18,10 @@ type DeviceState = {
   interfaces?: Record<
     string,
     {
-      ip: string;
+      ip?: string;
+      mask?: string;
       status: "up" | "down";
+      vlan?: string;
     }
   >;
 };
@@ -63,6 +65,31 @@ function getRouterSuggestions(mode: CliMode | undefined) {
   return ["enable"];
 }
 
+function getSwitchSuggestions(mode: CliMode | undefined) {
+  if (mode === "user") {
+    return ["enable", "show interfaces status", "show vlan brief"];
+  }
+
+  if (mode === "privileged") {
+    return [
+      "configure terminal",
+      "show interfaces status",
+      "show vlan brief",
+      "exit",
+    ];
+  }
+
+  if (mode === "global_config") {
+    return ["interface f0/1", "interface f0/2", "exit", "end"];
+  }
+
+  if (mode === "interface_config") {
+    return ["shutdown", "no shutdown", "exit", "end"];
+  }
+
+  return ["enable"];
+}
+
 function getSuggestions(
   deviceType: string | undefined,
   device: DeviceState | undefined,
@@ -85,6 +112,10 @@ function getSuggestions(
     return getRouterSuggestions(cliContext?.mode || "user");
   }
 
+  if (deviceType === "switch") {
+    return getSwitchSuggestions(cliContext?.mode || "user");
+  }
+
   return [];
 }
 
@@ -93,7 +124,7 @@ function getPrompt(
   deviceType: string | undefined,
   cliContext?: CliContext
 ) {
-  if (deviceType !== "router") {
+  if (deviceType === "pc") {
     return `${deviceId}>`;
   }
 
@@ -162,7 +193,6 @@ export function TerminalPanel({
   const prompt = getPrompt(deviceId, deviceType, cliContext);
 
   const deviceLogs = logs.filter((log) => log.deviceId === deviceId);
-
   const commandHistory = deviceLogs.map((log) => log.command);
 
   function handleRunCommand() {

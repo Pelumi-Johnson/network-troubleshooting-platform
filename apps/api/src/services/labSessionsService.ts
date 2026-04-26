@@ -35,7 +35,7 @@ function buildInitialCliContexts(state: any): Record<string, CliContext> {
   const contexts: Record<string, CliContext> = {};
 
   for (const [deviceId, device] of Object.entries(state.devices || {}) as any[]) {
-    if (device.type === "router") {
+    if (device.type === "router" || device.type === "switch") {
       contexts[deviceId] = {
         mode: "user",
         interfaceName: null,

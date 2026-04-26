@@ -4,9 +4,12 @@ export type CommandKey =
   | "set_default_gateway"
   | "set_dns"
   | "show_ip_interface_brief"
+  | "show_interfaces_status"
+  | "show_vlan_brief"
   | "enable"
   | "configure_terminal"
   | "interface"
+  | "shutdown"
   | "no_shutdown"
   | "exit"
   | "end";
@@ -76,6 +79,22 @@ export function parseCommand(rawCommand: string): ParsedCommand | null {
     };
   }
 
+  if (/^show\s+interfaces\s+status$/i.test(command)) {
+    return {
+      commandKey: "show_interfaces_status",
+      raw: command,
+      args: {},
+    };
+  }
+
+  if (/^show\s+vlan\s+brief$/i.test(command)) {
+    return {
+      commandKey: "show_vlan_brief",
+      raw: command,
+      args: {},
+    };
+  }
+
   if (/^enable$/i.test(command)) {
     return {
       commandKey: "enable",
@@ -101,6 +120,14 @@ export function parseCommand(rawCommand: string): ParsedCommand | null {
       args: {
         interfaceName: interfaceMatch[1].toLowerCase(),
       },
+    };
+  }
+
+  if (/^shutdown$/i.test(command)) {
+    return {
+      commandKey: "shutdown",
+      raw: command,
+      args: {},
     };
   }
 
