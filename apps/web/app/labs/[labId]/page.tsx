@@ -38,6 +38,13 @@ type CliContext = {
   interfaceName?: string | null;
 };
 
+type SuccessRule = {
+  type: "fieldEquals";
+  deviceId: string;
+  path: string;
+  value: string | number | boolean;
+};
+
 type Lab = {
   id: string;
   slug: string;
@@ -46,6 +53,10 @@ type Lab = {
     summary: string;
     objective: string;
     completionMessage: string;
+  };
+  successConditions?: {
+    mode: "all" | "any";
+    rules: SuccessRule[];
   };
 };
 
@@ -69,6 +80,35 @@ type LabSession = {
   cliContexts?: Record<string, CliContext>;
   commandHistory?: CommandLog[];
 };
+
+function getValueAtPath(source: unknown, path: string): unknown {
+  const pathParts = path.split(".");
+  let currentValue: unknown = source;
+
+  for (const part of pathParts) {
+    if (
+      currentValue === null ||
+      typeof currentValue !== "object" ||
+      !(part in currentValue)
+    ) {
+      return undefined;
+    }
+
+    currentValue = (currentValue as Record<string, unknown>)[part];
+  }
+
+  return currentValue;
+}
+
+function isRuleSatisfied(device: DeviceState | undefined, rule: SuccessRule) {
+  if (!device) return false;
+
+  if (rule.type === "fieldEquals") {
+    return getValueAtPath(device, rule.path) === rule.value;
+  }
+
+  return false;
+}
 
 export default function LabPage() {
   const params = useParams();
@@ -286,45 +326,20 @@ export default function LabPage() {
 
     if (!device) return "hidden";
 
-    if (lab?.slug === "office-network-down") {
-      if (device.type === "pc") {
-        return device.network?.gateway === "192.168.1.1" ? "fixed" : "broken";
-      }
+    const rules = lab?.successConditions?.rules || [];
+    const rulesForDevice = rules.filter(
+      (rule) => rule.deviceId === deviceIdToCheck
+    );
 
+    if (rulesForDevice.length === 0) {
       return "normal";
     }
 
-    if (lab?.slug === "router-interface-down") {
-      if (device.type === "router") {
-        const hasDownInterface = Object.values(device.interfaces || {}).some(
-          (iface) => iface.status === "down"
-        );
+    const allDeviceRulesSatisfied = rulesForDevice.every((rule) =>
+      isRuleSatisfied(device, rule)
+    );
 
-        return hasDownInterface ? "broken" : "fixed";
-      }
-
-      return "normal";
-    }
-
-    if (lab?.slug === "dns-failure") {
-      if (device.type === "pc") {
-        return device.network?.dns === "8.8.8.8" ? "fixed" : "broken";
-      }
-
-      return "normal";
-    }
-
-    if (lab?.slug === "switch-port-down") {
-      if (device.type === "switch") {
-        return device.interfaces?.["f0/1"]?.status === "up"
-          ? "fixed"
-          : "broken";
-      }
-
-      return "normal";
-    }
-
-    return "normal";
+    return allDeviceRulesSatisfied ? "fixed" : "broken";
   }
 
   if (loading) {
