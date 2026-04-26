@@ -3,6 +3,7 @@ export type CommandKey =
   | "ping"
   | "set_default_gateway"
   | "set_dns"
+  | "set_subnet_mask"
   | "show_ip_interface_brief"
   | "show_interfaces_status"
   | "show_vlan_brief"
@@ -67,6 +68,20 @@ export function parseCommand(rawCommand: string): ParsedCommand | null {
       raw: command,
       args: {
         ip: setDnsMatch[1],
+      },
+    };
+  }
+
+  const setSubnetMaskMatch = command.match(
+    /^set\s+subnet-mask\s+(\d{1,3}(?:\.\d{1,3}){3})$/i
+  );
+
+  if (setSubnetMaskMatch) {
+    return {
+      commandKey: "set_subnet_mask",
+      raw: command,
+      args: {
+        mask: setSubnetMaskMatch[1],
       },
     };
   }

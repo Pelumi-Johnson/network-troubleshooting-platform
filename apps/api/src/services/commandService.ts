@@ -4,6 +4,7 @@ import {
   handlePing,
   handleSetGateway,
   handleSetDns,
+  handleSetSubnetMask,
   handleShowIpInterfaceBrief,
   handleNoShutdown,
 } from "../engine/handlers";
@@ -20,7 +21,7 @@ type CliContext = {
 };
 
 const allowedCommandsByDeviceType: Record<string, CommandKey[]> = {
-  pc: ["ipconfig", "ping", "set_default_gateway", "set_dns"],
+  pc: ["ipconfig", "ping", "set_default_gateway", "set_dns", "set_subnet_mask"],
   router: [
     "show_ip_interface_brief",
     "enable",
@@ -457,6 +458,8 @@ class CommandService {
       output = handleSetGateway(device, parsed.args.ip);
     } else if (parsed.commandKey === "set_dns") {
       output = handleSetDns(device, parsed.args.ip);
+    } else if (parsed.commandKey === "set_subnet_mask") {
+      output = handleSetSubnetMask(device, parsed.args.mask);
     } else {
       output = "Command recognized but not implemented.";
     }
