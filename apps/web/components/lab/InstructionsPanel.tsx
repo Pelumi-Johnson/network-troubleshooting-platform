@@ -5,6 +5,7 @@ type Lab = {
     summary: string;
     objective: string;
     completionMessage: string;
+    observedBehavior?: string[];
   };
 };
 
@@ -22,37 +23,9 @@ type Props = {
   onRestart: () => void;
 };
 
-function getObservedBehavior(slug: string | undefined) {
-  if (slug === "office-network-down") {
-    return [
-      "Internal communication appears normal.",
-      "External network access is failing.",
-      "Default gateway settings should be verified on the PCs.",
-    ];
-  }
-
-  if (slug === "router-interface-down") {
-    return [
-      "The PC cannot reach its default gateway.",
-      "Router interface status should be inspected.",
-      "A down router interface can block local network access.",
-    ];
-  }
-
-  if (slug === "dns-failure") {
-    return [
-      "External IP connectivity works.",
-      "Domain name resolution is failing.",
-      "DNS settings should be checked on the PC.",
-    ];
-  }
-
-  if (slug === "switch-port-down") {
-    return [
-      "PC1 appears isolated from the network.",
-      "The switch should be inspected for disabled ports.",
-      "Port f0/1 is the likely access port connected to PC1.",
-    ];
+function getObservedBehavior(lab: Lab | null) {
+  if (lab?.scenario.observedBehavior?.length) {
+    return lab.scenario.observedBehavior;
   }
 
   return ["Troubleshoot the network and restore the expected service."];
@@ -65,7 +38,7 @@ export function InstructionsPanel({
   onGetHint,
   onRestart,
 }: Props) {
-  const observedBehavior = getObservedBehavior(lab?.slug);
+  const observedBehavior = getObservedBehavior(lab);
 
   return (
     <section className="bg-slate-900 rounded-xl p-5 border border-slate-800">
@@ -112,6 +85,7 @@ export function InstructionsPanel({
 
       <div className="mt-5 flex gap-3">
         <button
+          type="button"
           onClick={onGetHint}
           disabled={session?.status === "completed"}
           className="bg-yellow-500 disabled:bg-slate-600 disabled:text-slate-300 px-4 py-2 rounded-lg font-semibold text-black"
@@ -120,6 +94,7 @@ export function InstructionsPanel({
         </button>
 
         <button
+          type="button"
           onClick={onRestart}
           className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg font-semibold"
         >

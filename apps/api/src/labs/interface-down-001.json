@@ -8,7 +8,12 @@
   "scenario": {
     "summary": "PC cannot reach the default gateway because the router interface is down.",
     "objective": "Use router CLI modes to enter interface configuration and bring the interface up.",
-    "completionMessage": "Interface is up. Network connectivity restored."
+    "completionMessage": "Interface is up. Network connectivity restored.",
+    "observedBehavior": [
+      "The PC cannot reach its default gateway.",
+      "Router interface status should be inspected.",
+      "A down router interface can block local network access."
+    ]
   },
   "topology": {
     "devices": [

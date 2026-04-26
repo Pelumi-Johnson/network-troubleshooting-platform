@@ -8,7 +8,12 @@
   "scenario": {
     "summary": "Users in a small office cannot access external networks. Internal connectivity appears normal.",
     "objective": "Diagnose and restore connectivity to external networks.",
-    "completionMessage": "Network restored. Devices can now reach external networks."
+    "completionMessage": "Network restored. Devices can now reach external networks.",
+    "observedBehavior": [
+      "Internal communication appears normal.",
+      "External network access is failing.",
+      "Default gateway settings should be verified on the PCs."
+    ]
   },
   "topology": {
     "devices": [

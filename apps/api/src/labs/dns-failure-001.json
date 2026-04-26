@@ -8,7 +8,12 @@
   "scenario": {
     "summary": "A user can reach external IP addresses, but website names are not resolving.",
     "objective": "Diagnose and fix the DNS configuration on the PC.",
-    "completionMessage": "DNS fixed. The PC can now resolve domain names."
+    "completionMessage": "DNS fixed. The PC can now resolve domain names.",
+    "observedBehavior": [
+      "External IP connectivity works.",
+      "Domain name resolution is failing.",
+      "DNS settings should be checked on the PC."
+    ]
   },
   "topology": {
     "devices": [

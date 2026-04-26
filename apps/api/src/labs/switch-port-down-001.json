@@ -8,7 +8,12 @@
   "scenario": {
     "summary": "PC1 cannot communicate because the switch port connected to it is administratively down.",
     "objective": "Use switch CLI commands to inspect interface status and bring port f0/1 back up.",
-    "completionMessage": "Switch port f0/1 is back up. PC1 connectivity is restored."
+    "completionMessage": "Switch port f0/1 is back up. PC1 connectivity is restored.",
+    "observedBehavior": [
+      "PC1 appears isolated from the network.",
+      "The switch should be inspected for disabled ports.",
+      "Port f0/1 is the likely access port connected to PC1."
+    ]
   },
   "topology": {
     "devices": [
