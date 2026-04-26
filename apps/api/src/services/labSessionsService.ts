@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma";
 import { labsService } from "./labsService";
+import { identityService } from "./identityService";
 
 type CliMode = "user" | "privileged" | "global_config" | "interface_config";
 
@@ -48,7 +49,7 @@ function toSession(record: any): LabSession {
     sessionId: record.id,
     labId: record.labId,
     labSlug: record.labSlug,
-    userId: record.userId || "demo-user",
+    userId: record.userId,
     status: record.status,
     selectedDeviceId: record.selectedDevice || null,
     score: record.score,
@@ -71,6 +72,8 @@ class LabSessionsService {
       return null;
     }
 
+    const demoUser = await identityService.getDemoUser();
+
     const initialState = cloneData(lab.initialState);
     const cliContexts = buildInitialCliContexts(initialState);
 
@@ -78,7 +81,7 @@ class LabSessionsService {
       data: {
         labId: lab.id,
         labSlug: lab.slug,
-        userId: null,
+        userId: demoUser.id,
         status: "in_progress",
         selectedDevice: null,
         score: lab.scoring.baseScore,
@@ -113,6 +116,7 @@ class LabSessionsService {
         id: session.sessionId,
       },
       data: {
+        userId: session.userId,
         status: session.status,
         selectedDevice: session.selectedDeviceId,
         score: session.score,

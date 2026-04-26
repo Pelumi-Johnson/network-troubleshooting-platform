@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma";
+import { identityService } from "./identityService";
 
 type ProgressRecord = {
   id: string;
@@ -18,9 +19,11 @@ function formatProgress(item: ProgressRecord) {
 
 class ProgressService {
   async getProgress() {
+    const demoUser = await identityService.getDemoUser();
+
     const progress = await prisma.labProgress.findMany({
       where: {
-        userId: null,
+        userId: demoUser.id,
       },
       orderBy: {
         completedAt: "desc",
@@ -31,10 +34,12 @@ class ProgressService {
   }
 
   async saveProgress(labSlug: string, score: number) {
+    const demoUser = await identityService.getDemoUser();
+
     const existingProgress = await prisma.labProgress.findFirst({
       where: {
         labSlug,
-        userId: null,
+        userId: demoUser.id,
       },
     });
 
@@ -55,7 +60,7 @@ class ProgressService {
     const newProgress = await prisma.labProgress.create({
       data: {
         labSlug,
-        userId: null,
+        userId: demoUser.id,
         score,
       },
     });
@@ -64,10 +69,12 @@ class ProgressService {
   }
 
   async deleteProgress(labSlug: string) {
+    const demoUser = await identityService.getDemoUser();
+
     const existingProgress = await prisma.labProgress.findFirst({
       where: {
         labSlug,
-        userId: null,
+        userId: demoUser.id,
       },
     });
 
@@ -88,9 +95,11 @@ class ProgressService {
   }
 
   async clearProgress() {
+    const demoUser = await identityService.getDemoUser();
+
     await prisma.labProgress.deleteMany({
       where: {
-        userId: null,
+        userId: demoUser.id,
       },
     });
 
