@@ -68,10 +68,19 @@
       },
       "sw1": {
         "type": "switch",
-        "ports": {
-          "f0/1": { "status": "up" },
-          "f0/2": { "status": "up" },
-          "f0/24": { "status": "up" }
+        "interfaces": {
+          "f0/1": {
+            "status": "up",
+            "vlan": "1"
+          },
+          "f0/2": {
+            "status": "up",
+            "vlan": "1"
+          },
+          "f0/24": {
+            "status": "up",
+            "vlan": "1"
+          }
         }
       },
       "r1": {
@@ -89,7 +98,7 @@
   "interaction": {
     "allowedCommands": {
       "pc": ["ipconfig", "ping {ip}", "set default-gateway {ip}"],
-      "switch": [],
+      "switch": ["show interfaces status", "show vlan brief"],
       "router": ["show ip interface brief"]
     },
     "editableFields": [
@@ -105,20 +114,6 @@
       }
     ]
   },
-  "hints": [
-    {
-      "level": 1,
-      "text": "Check the IP settings on the PCs."
-    },
-    {
-      "level": 2,
-      "text": "Internal connectivity is not the same as external connectivity."
-    },
-    {
-      "level": 3,
-      "text": "Verify the default gateway configured on each PC."
-    }
-  ],
   "successConditions": {
     "mode": "all",
     "rules": [
@@ -136,6 +131,20 @@
       }
     ]
   },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Check the IP settings on the PCs."
+    },
+    {
+      "level": 2,
+      "text": "Internal connectivity is not the same as external connectivity."
+    },
+    {
+      "level": 3,
+      "text": "Verify the default gateway configured on each PC."
+    }
+  ],
   "scoring": {
     "baseScore": 100,
     "hintPenalty": 10,
