@@ -134,6 +134,13 @@ function getTabCompletion(input: string, suggestions: string[]) {
   return input;
 }
 
+function getDeviceLabel(deviceId: string, deviceType: string | undefined) {
+  if (deviceType === "pc") return `${deviceId.toUpperCase()} Console`;
+  if (deviceType === "router") return `${deviceId.toUpperCase()} Router CLI`;
+  if (deviceType === "switch") return `${deviceId.toUpperCase()} Switch CLI`;
+  return `${deviceId.toUpperCase()} Terminal`;
+}
+
 export function TerminalPanel({
   logs,
   command,
@@ -146,6 +153,7 @@ export function TerminalPanel({
   cliContexts,
 }: Props) {
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(true);
 
   const selectedDevice = devices?.[deviceId];
   const deviceType = selectedDevice?.type;
@@ -153,9 +161,9 @@ export function TerminalPanel({
   const suggestions = getSuggestions(deviceType, selectedDevice, cliContext);
   const prompt = getPrompt(deviceId, deviceType, cliContext);
 
-  const commandHistory = logs
-    .filter((log) => log.deviceId === deviceId)
-    .map((log) => log.command);
+  const deviceLogs = logs.filter((log) => log.deviceId === deviceId);
+
+  const commandHistory = deviceLogs.map((log) => log.command);
 
   function handleRunCommand() {
     setHistoryIndex(null);
@@ -210,44 +218,84 @@ export function TerminalPanel({
   }
 
   return (
-    <section className="bg-black rounded-xl p-5 border border-slate-800">
-      <h2 className="text-xl font-bold mb-4">Terminal</h2>
+    <section className="bg-black rounded-xl border border-slate-800 overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4 bg-slate-950">
+        <div>
+          <h2 className="text-xl font-bold text-white">Terminal</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            {getDeviceLabel(deviceId, deviceType)} — device history is isolated.
+          </p>
+        </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        {suggestions.map((cmd) => (
+        <div className="text-xs text-slate-500">
+          Selected:{" "}
+          <span className="text-green-400 font-mono">
+            {deviceId.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-5 pt-4 pb-3 bg-black border-b border-slate-900">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Command Shortcuts
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              Optional training aid. Hide them to practice from memory.
+            </p>
+          </div>
+
           <button
-            key={cmd}
             type="button"
-            onClick={() => {
-              setCommand(cmd);
-              setHistoryIndex(null);
-            }}
-            disabled={disabled}
-            className="text-xs bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 px-3 py-1 rounded"
+            onClick={() => setShowShortcuts((prev) => !prev)}
+            className="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg text-slate-300"
           >
-            {cmd}
+            {showShortcuts ? "Hide Shortcuts" : "Show Shortcuts"}
           </button>
-        ))}
+        </div>
+
+        {showShortcuts && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {suggestions.map((cmd) => (
+              <button
+                key={cmd}
+                type="button"
+                onClick={() => {
+                  setCommand(cmd);
+                  setHistoryIndex(null);
+                }}
+                disabled={disabled}
+                className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-slate-950 disabled:text-slate-700 border border-slate-800 px-3 py-1 rounded"
+              >
+                {cmd}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div
         ref={terminalRef}
-        className="h-96 overflow-y-auto bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-sm"
+        className="h-[460px] overflow-y-auto bg-black p-5 font-mono text-sm"
       >
-        {logs.length === 0 && (
-          <p className="text-slate-500">
-            Start troubleshooting using commands above.
-          </p>
+        {deviceLogs.length === 0 && (
+          <div className="text-slate-600">
+            <p>{getDeviceLabel(deviceId, deviceType)}</p>
+            <p>This device has no command history yet.</p>
+            <p className="mt-2">Tips: ↑ ↓ history | Tab autocomplete</p>
+          </div>
         )}
 
-        {logs.map((log, i) => (
-          <div key={i} className="mb-5 border-b border-slate-800 pb-3">
+        {deviceLogs.map((log, i) => (
+          <div key={`${log.deviceId}-${i}`} className="mb-4">
             <div className="text-green-400">
               {log.deviceId}&gt; {log.command}
             </div>
+
             {log.output && (
               <pre
-                className={`whitespace-pre-wrap mt-2 ${
+                className={`whitespace-pre-wrap mt-1 leading-relaxed ${
                   log.ok === false ? "text-red-400" : "text-slate-200"
                 }`}
               >
@@ -256,34 +304,36 @@ export function TerminalPanel({
             )}
           </div>
         ))}
+
+        {!disabled && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-green-400">{prompt}</span>
+            <input
+              value={command}
+              onChange={(event) => {
+                setCommand(event.target.value);
+                setHistoryIndex(null);
+              }}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              placeholder=""
+              className="flex-1 bg-transparent border-none outline-none text-slate-100 font-mono caret-green-400"
+            />
+          </div>
+        )}
+
+        {disabled && (
+          <div className="text-slate-600 mt-3">
+            Session complete. Start a new session to continue.
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 flex gap-2 items-center">
-        <span className="text-green-400 font-mono text-sm">{prompt}</span>
-        <input
-          value={command}
-          onChange={(event) => {
-            setCommand(event.target.value);
-            setHistoryIndex(null);
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="Type command..."
-          disabled={disabled}
-          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white disabled:bg-slate-800 disabled:text-slate-500"
-        />
-        <button
-          type="button"
-          onClick={handleRunCommand}
-          disabled={disabled}
-          className="bg-blue-600 disabled:bg-slate-700 px-4 py-2 rounded-lg font-semibold"
-        >
-          Run
-        </button>
+      <div className="border-t border-slate-800 bg-slate-950 px-5 py-3 flex items-center justify-between text-xs text-slate-600">
+        <span>Device-specific console</span>
+        <span>Tab autocomplete</span>
+        <span>↑ ↓ history</span>
       </div>
-
-      <p className="mt-3 text-xs text-slate-600">
-        Tips: Use ↑ ↓ for command history. Use Tab to autocomplete.
-      </p>
     </section>
   );
 }

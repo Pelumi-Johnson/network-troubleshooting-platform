@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAllLabs } from "@/lib/api/labsApi";
+import {
+  clearProgress,
+  deleteProgress,
+  getProgress,
+  type LabProgress,
+} from "@/lib/api/progressApi";
 
 type LabSummary = {
   id: string;
@@ -12,14 +18,6 @@ type LabSummary = {
   category: string;
   estimatedMinutes: number;
 };
-
-type LabProgress = {
-  labSlug: string;
-  score: number;
-  completedAt: string;
-};
-
-const PROGRESS_KEY = "lab-progress";
 
 function getDifficultyStyle(difficulty: string) {
   if (difficulty === "easy") {
@@ -45,6 +43,16 @@ function formatDate(value: string) {
   });
 }
 
+function progressListToMap(progressList: LabProgress[]) {
+  const progressMap: Record<string, LabProgress> = {};
+
+  for (const item of progressList) {
+    progressMap[item.labSlug] = item;
+  }
+
+  return progressMap;
+}
+
 export default function DashboardPage() {
   const [labs, setLabs] = useState<LabSummary[]>([]);
   const [progress, setProgress] = useState<Record<string, LabProgress>>({});
@@ -52,35 +60,54 @@ export default function DashboardPage() {
     {}
   );
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadLabs() {
-      const labData = await getAllLabs();
+    let cancelled = false;
 
-      const savedProgressRaw = localStorage.getItem(PROGRESS_KEY);
-      const savedProgress = savedProgressRaw
-        ? JSON.parse(savedProgressRaw)
-        : {};
+    async function loadDashboardData() {
+      try {
+        const labData = await getAllLabs();
+        const progressData = await getProgress();
 
-      const sessionMap: Record<string, boolean> = {};
+        if (cancelled) return;
 
-      for (const lab of labData) {
-        sessionMap[lab.slug] = Boolean(
-          localStorage.getItem(getActiveSessionKey(lab.slug))
+        const sessionMap: Record<string, boolean> = {};
+
+        for (const lab of labData) {
+          sessionMap[lab.slug] = Boolean(
+            localStorage.getItem(getActiveSessionKey(lab.slug))
+          );
+        }
+
+        setLabs(labData);
+        setProgress(progressListToMap(progressData));
+        setActiveSessions(sessionMap);
+        setError("");
+      } catch (err) {
+        if (cancelled) return;
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load dashboard. Make sure backend is running."
         );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      setLabs(labData);
-      setProgress(savedProgress);
-      setActiveSessions(sessionMap);
-      setLoading(false);
     }
 
-    loadLabs();
+    loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function clearProgress() {
-    localStorage.removeItem(PROGRESS_KEY);
+  async function handleClearProgress() {
+    await clearProgress();
 
     for (const lab of labs) {
       localStorage.removeItem(getActiveSessionKey(lab.slug));
@@ -88,6 +115,22 @@ export default function DashboardPage() {
 
     setProgress({});
     setActiveSessions({});
+  }
+
+  async function handleRetry(labSlug: string) {
+    await deleteProgress(labSlug);
+    localStorage.removeItem(getActiveSessionKey(labSlug));
+
+    setProgress((prev) => {
+      const updated = { ...prev };
+      delete updated[labSlug];
+      return updated;
+    });
+
+    setActiveSessions((prev) => ({
+      ...prev,
+      [labSlug]: false,
+    }));
   }
 
   const completedCount = labs.filter((lab) => progress[lab.slug]).length;
@@ -128,7 +171,8 @@ export default function DashboardPage() {
               CCNA Track
             </span>
             <button
-              onClick={clearProgress}
+              type="button"
+              onClick={handleClearProgress}
               className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg px-4 py-2"
             >
               Reset Progress
@@ -203,11 +247,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {loading ? (
+        {loading && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
             Loading labs...
           </div>
-        ) : (
+        )}
+
+        {!loading && error && (
+          <div className="bg-red-950/40 border border-red-700 rounded-2xl p-8 text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {labs.map((lab) => {
               const labProgress = progress[lab.slug];
@@ -301,35 +353,13 @@ export default function DashboardPage() {
                           : "bg-blue-600 hover:bg-blue-500"
                       }`}
                     >
-                      {completed
-                        ? "Review"
-                        : inProgress
-                        ? "Resume"
-                        : "Start"}
+                      {completed ? "Review" : inProgress ? "Resume" : "Start"}
                     </Link>
 
                     {completed && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const updatedProgress = { ...progress };
-                          delete updatedProgress[lab.slug];
-
-                          localStorage.setItem(
-                            PROGRESS_KEY,
-                            JSON.stringify(updatedProgress)
-                          );
-
-                          localStorage.removeItem(
-                            getActiveSessionKey(lab.slug)
-                          );
-
-                          setProgress(updatedProgress);
-                          setActiveSessions((prev) => ({
-                            ...prev,
-                            [lab.slug]: false,
-                          }));
-                        }}
+                        onClick={() => handleRetry(lab.slug)}
                         className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
                       >
                         Retry

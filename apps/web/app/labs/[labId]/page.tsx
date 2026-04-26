@@ -47,18 +47,6 @@ type Lab = {
   };
 };
 
-type LabSession = {
-  sessionId: string;
-  labId: string;
-  status: string;
-  score: number;
-  hintsUsed: number;
-  state: {
-    devices: Record<string, DeviceState>;
-  };
-  cliContexts?: Record<string, CliContext>;
-};
-
 type CommandLog = {
   deviceId: string;
   command: string;
@@ -66,13 +54,19 @@ type CommandLog = {
   ok?: boolean;
 };
 
-type LabProgress = {
+type LabSession = {
+  sessionId: string;
+  labId: string;
   labSlug: string;
+  status: string;
   score: number;
-  completedAt: string;
+  hintsUsed: number;
+  state: {
+    devices: Record<string, DeviceState>;
+  };
+  cliContexts?: Record<string, CliContext>;
+  commandHistory?: CommandLog[];
 };
-
-const PROGRESS_KEY = "lab-progress";
 
 export default function LabPage() {
   const params = useParams();
@@ -89,19 +83,13 @@ export default function LabPage() {
 
   const terminalRef = useRef<HTMLDivElement | null>(null);
 
-  function saveProgress(completedSession: LabSession) {
-    const existingRaw = localStorage.getItem(PROGRESS_KEY);
-    const existing: Record<string, LabProgress> = existingRaw
-      ? JSON.parse(existingRaw)
-      : {};
-
-    existing[labSlug] = {
-      labSlug,
-      score: completedSession.score,
-      completedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(existing));
+  function getLogsFromSession(sessionData: LabSession): CommandLog[] {
+    return (sessionData.commandHistory || []).map((log) => ({
+      deviceId: log.deviceId,
+      command: log.command,
+      output: log.output,
+      ok: log.ok,
+    }));
   }
 
   async function createNewSession(slug: string): Promise<LabSession> {
@@ -112,7 +100,6 @@ export default function LabPage() {
 
   async function loadLabSession(slug: string, forceNew = false) {
     setLoading(true);
-    setLogs([]);
     setHint("");
     setCommand("");
     setDeviceId("pc1");
@@ -123,6 +110,7 @@ export default function LabPage() {
       const newSession = await createNewSession(slug);
       setLab(labData);
       setSession(newSession);
+      setLogs(getLogsFromSession(newSession));
       setLoading(false);
       return;
     }
@@ -134,6 +122,7 @@ export default function LabPage() {
         const savedSession = (await getLabSession(savedSessionId)) as LabSession;
         setLab(labData);
         setSession(savedSession);
+        setLogs(getLogsFromSession(savedSession));
         setLoading(false);
         return;
       } catch {
@@ -144,6 +133,7 @@ export default function LabPage() {
     const newSession = await createNewSession(slug);
     setLab(labData);
     setSession(newSession);
+    setLogs(getLogsFromSession(newSession));
     setLoading(false);
   }
 
@@ -164,6 +154,7 @@ export default function LabPage() {
 
           setLab(labData);
           setSession(savedSession);
+          setLogs(getLogsFromSession(savedSession));
           setLoading(false);
           return;
         } catch {
@@ -178,6 +169,7 @@ export default function LabPage() {
 
       setLab(labData);
       setSession(newSession);
+      setLogs(getLogsFromSession(newSession));
       setLoading(false);
     }
 
@@ -193,7 +185,7 @@ export default function LabPage() {
       top: terminalRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [logs]);
+  }, [logs, deviceId]);
 
   async function startLab() {
     localStorage.removeItem(storageKey);
@@ -203,6 +195,7 @@ export default function LabPage() {
   async function refreshSession(sessionId: string): Promise<LabSession> {
     const updatedSession = (await getLabSession(sessionId)) as LabSession;
     setSession(updatedSession);
+    setLogs(getLogsFromSession(updatedSession));
     return updatedSession;
   }
 
@@ -223,22 +216,25 @@ export default function LabPage() {
       return;
     }
 
-    const result = await executeCommand(session.sessionId, deviceId, command);
+    const submittedCommand = command;
+    const result = await executeCommand(
+      session.sessionId,
+      deviceId,
+      submittedCommand
+    );
 
-    setLogs((prev) => [
-      ...prev,
-      {
-        deviceId,
-        command,
-        output: result.output,
-        ok: result.ok,
-      },
-    ]);
+    await refreshSession(session.sessionId);
 
-    const updatedSession = await refreshSession(session.sessionId);
-
-    if (updatedSession.status === "completed") {
-      saveProgress(updatedSession);
+    if (result.ok === false) {
+      setLogs((prev) => [
+        ...prev,
+        {
+          deviceId,
+          command: submittedCommand,
+          output: result.output,
+          ok: false,
+        },
+      ]);
     }
 
     setCommand("");

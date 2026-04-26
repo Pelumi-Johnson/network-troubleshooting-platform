@@ -10,6 +10,7 @@ import {
 import { labSessionsService } from "./labSessionsService";
 import { labsService } from "./labsService";
 import { validateLabCompletion } from "../engine/validation/rulesEngine";
+import { progressService } from "./progressService";
 
 type CliMode = "user" | "privileged" | "global_config" | "interface_config";
 
@@ -173,8 +174,8 @@ function getNoShutdownModeError(context: CliContext) {
 }
 
 class CommandService {
-  executeCommand(sessionId: string, deviceId: string, rawCommand: string) {
-    const session = labSessionsService.getSession(sessionId);
+  async executeCommand(sessionId: string, deviceId: string, rawCommand: string) {
+    const session = await labSessionsService.getSession(sessionId);
 
     if (!session) {
       return { ok: false, output: "Session not found" };
@@ -211,6 +212,8 @@ class CommandService {
       };
     }
 
+    session.selectedDeviceId = deviceId;
+
     const allowedCommands = allowedCommandsByDeviceType[device.type] || [];
 
     if (!allowedCommands.includes(parsed.commandKey)) {
@@ -230,7 +233,10 @@ class CommandService {
       if (parsed.commandKey === "enable") {
         if (context.mode === "privileged") {
           output = "Already in privileged EXEC mode.";
-        } else if (context.mode === "global_config" || context.mode === "interface_config") {
+        } else if (
+          context.mode === "global_config" ||
+          context.mode === "interface_config"
+        ) {
           output = [
             "% Invalid input detected at '^' marker.",
             "Hint: You are already in configuration mode. Use 'end' to return to user mode.",
@@ -307,18 +313,29 @@ class CommandService {
         "✔ Lab objective completed.",
         lab.scenario.completionMessage,
       ].join("\n");
+
+      const lastCommand =
+        session.commandHistory[session.commandHistory.length - 1];
+
+      if (lastCommand) {
+        lastCommand.output = output;
+      }
+
+      await progressService.saveProgress(lab.slug, session.score);
     }
+
+    const savedSession = await labSessionsService.updateSession(session);
 
     return {
       ok: true,
       deviceId,
       command: rawCommand,
       output,
-      status: session.status,
-      score: session.score,
-      completed: session.status === "completed",
+      status: savedSession.status,
+      score: savedSession.score,
+      completed: savedSession.status === "completed",
       completionMessage:
-        session.status === "completed"
+        savedSession.status === "completed"
           ? lab.scenario.completionMessage
           : undefined,
     };

@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions LabSession[]
+  progress LabProgress[]
+}
+
+model LabSession {
+  id             String    @id @default(uuid())
+  labId          String
+  labSlug        String
+  userId         String?
+  status         String    @default("in_progress")
+  selectedDevice String?
+  score          Int       @default(100)
+  hintsUsed      Int       @default(0)
+  state          Json
+  cliContexts    Json?
+  commandHistory Json
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model LabProgress {
+  id          String   @id @default(uuid())
+  labSlug     String
+  userId      String?
+  score       Int
+  completedAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@unique([labSlug, userId])
+}

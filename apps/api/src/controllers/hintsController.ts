@@ -2,16 +2,27 @@ import type { Request, Response } from "express";
 import { hintService } from "../services/hintService";
 
 export const hintsController = {
-  getNextHint(req: Request, res: Response): void {
-    const sessionId = String(req.params.sessionId);
+  async getHint(req: Request, res: Response): Promise<void> {
+    try {
+      const sessionId = String(req.params.sessionId);
 
-    const result = hintService.getNextHint(sessionId);
+      const result = await hintService.getHint(sessionId);
 
-    if (!result.ok) {
-      res.status(400).json(result);
-      return;
+      if (!result.ok) {
+        res.status(result.statusCode).json({
+          ok: false,
+          message: result.message,
+        });
+        return;
+      }
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        ok: false,
+        message: "Failed to get hint",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
-
-    res.json(result);
-  }
+  },
 };
