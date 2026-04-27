@@ -15,6 +15,7 @@ import {
   clearActiveLabSession,
   getActiveLabSessions,
 } from "@/lib/api/labSessionsApi";
+import { useRequireAuth } from "@/lib/auth/useRequireAuth";
 
 type LabSummary = {
   id: string;
@@ -74,6 +75,8 @@ function attemptsListToMap(attemptsList: LabAttempt[]) {
 }
 
 export default function DashboardPage() {
+  const { user, checkingAuth, logout } = useRequireAuth();
+
   const [labs, setLabs] = useState<LabSummary[]>([]);
   const [progress, setProgress] = useState<Record<string, LabProgress>>({});
   const [attempts, setAttempts] = useState<Record<string, LabAttempt[]>>({});
@@ -84,6 +87,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (checkingAuth) return;
+
     let cancelled = false;
 
     async function loadDashboardData() {
@@ -136,7 +141,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [checkingAuth]);
 
   async function handleClearProgress() {
     await clearProgress();
@@ -166,6 +171,14 @@ export default function DashboardPage() {
       ...prev,
       [labSlug]: false,
     }));
+  }
+
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white p-8">
+        Checking login...
+      </main>
+    );
   }
 
   const completedCount = labs.filter((lab) => progress[lab.slug]).length;
@@ -204,6 +217,12 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold">
               Fix broken networks. Build real troubleshooting skill.
             </h1>
+            <p className="text-slate-500 text-sm mt-2">
+              Signed in as{" "}
+              <span className="text-slate-300">
+                {user?.name || user?.email}
+              </span>
+            </p>
           </div>
 
           <div className="hidden md:flex gap-3 text-sm text-slate-400">
@@ -216,6 +235,13 @@ export default function DashboardPage() {
               className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg px-4 py-2"
             >
               Reset Progress
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-300"
+            >
+              Logout
             </button>
           </div>
         </div>

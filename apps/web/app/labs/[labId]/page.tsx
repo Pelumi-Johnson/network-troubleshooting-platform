@@ -11,6 +11,7 @@ import {
   getLabSession,
   requestHint,
 } from "@/lib/api/labSessionsApi";
+import { useRequireAuth } from "@/lib/auth/useRequireAuth";
 
 type DeviceType = "pc" | "switch" | "router";
 
@@ -143,6 +144,8 @@ function isRuleSatisfied(device: DeviceState | undefined, rule: SuccessRule) {
 }
 
 export default function LabPage() {
+  const { checkingAuth } = useRequireAuth();
+
   const params = useParams();
   const labSlug = String(params.labId);
   const storageKey = `active-session-${labSlug}`;
@@ -217,6 +220,8 @@ export default function LabPage() {
   }
 
   useEffect(() => {
+    if (checkingAuth) return;
+
     let cancelled = false;
 
     async function loadInitialLab() {
@@ -264,7 +269,7 @@ export default function LabPage() {
     return () => {
       cancelled = true;
     };
-  }, [labSlug, storageKey]);
+  }, [labSlug, storageKey, checkingAuth]);
 
   useEffect(() => {
     terminalRef.current?.scrollTo({
@@ -372,6 +377,14 @@ export default function LabPage() {
     );
 
     return allDeviceRulesSatisfied ? "fixed" : "broken";
+  }
+
+  if (checkingAuth) {
+    return (
+      <main className="p-8 bg-slate-950 text-white min-h-screen">
+        Checking login...
+      </main>
+    );
   }
 
   if (loading) {
