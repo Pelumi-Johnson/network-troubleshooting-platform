@@ -229,6 +229,14 @@ export default function DashboardPage() {
             <span className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2">
               CCNA Track
             </span>
+
+            <Link
+              href="/profile"
+              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-300"
+            >
+              Profile
+            </Link>
+
             <button
               type="button"
               onClick={handleClearProgress}
@@ -236,6 +244,7 @@ export default function DashboardPage() {
             >
               Reset Progress
             </button>
+
             <button
               type="button"
               onClick={logout}
