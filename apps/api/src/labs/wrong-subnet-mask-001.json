@@ -1,0 +1,140 @@
+{
+  "id": "wrong-subnet-mask-001",
+  "slug": "wrong-subnet-mask",
+  "title": "Wrong Subnet Mask",
+  "difficulty": "medium",
+  "category": "subnetting",
+  "estimatedMinutes": 12,
+  "scenario": {
+    "summary": "PC1 has the correct IP address and default gateway, but the subnet mask is incorrect. The PC cannot reach its gateway.",
+    "objective": "Diagnose the PC network settings and correct the subnet mask.",
+    "completionMessage": "Subnet mask corrected. PC1 can now communicate with the default gateway.",
+    "observedBehavior": [
+      "PC1 cannot reach the default gateway.",
+      "The IP address and default gateway appear reasonable.",
+      "The subnet mask should be checked carefully."
+    ]
+  },
+  "topology": {
+    "devices": [
+      {
+        "id": "pc1",
+        "label": "PC1",
+        "type": "pc",
+        "position": { "x": 100, "y": 150 }
+      },
+      {
+        "id": "sw1",
+        "label": "SW1",
+        "type": "switch",
+        "position": { "x": 350, "y": 150 }
+      },
+      {
+        "id": "r1",
+        "label": "R1",
+        "type": "router",
+        "position": { "x": 600, "y": 150 }
+      }
+    ],
+    "links": [
+      {
+        "id": "link1",
+        "from": "pc1",
+        "to": "sw1"
+      },
+      {
+        "id": "link2",
+        "from": "sw1",
+        "to": "r1"
+      }
+    ]
+  },
+  "initialState": {
+    "devices": {
+      "pc1": {
+        "type": "pc",
+        "network": {
+          "ip": "192.168.1.130",
+          "mask": "255.255.255.128",
+          "gateway": "192.168.1.1"
+        }
+      },
+      "sw1": {
+        "type": "switch",
+        "interfaces": {
+          "f0/1": {
+            "status": "up",
+            "vlan": "1"
+          },
+          "f0/2": {
+            "status": "up",
+            "vlan": "1"
+          }
+        }
+      },
+      "r1": {
+        "type": "router",
+        "interfaces": {
+          "g0/0": {
+            "ip": "192.168.1.1",
+            "mask": "255.255.255.0",
+            "status": "up"
+          }
+        }
+      }
+    }
+  },
+  "interaction": {
+    "allowedCommands": {
+      "pc": [
+        "ipconfig",
+        "ping {ip}",
+        "set subnet-mask 255.255.255.0"
+      ],
+      "switch": [
+        "show interfaces status",
+        "show vlan brief"
+      ],
+      "router": [
+        "show ip interface brief"
+      ]
+    },
+    "editableFields": [
+      {
+        "deviceId": "pc1",
+        "path": "network.mask",
+        "command": "set subnet-mask 255.255.255.0"
+      }
+    ]
+  },
+  "successConditions": {
+    "mode": "all",
+    "rules": [
+      {
+        "type": "fieldEquals",
+        "deviceId": "pc1",
+        "path": "network.mask",
+        "value": "255.255.255.0"
+      }
+    ]
+  },
+  "hints": [
+    {
+      "level": 1,
+      "text": "Start with ipconfig and compare the IP address, subnet mask, and default gateway."
+    },
+    {
+      "level": 2,
+      "text": "PC1 is 192.168.1.130. With a /25 mask, 192.168.1.1 is outside PC1's local subnet."
+    },
+    {
+      "level": 3,
+      "text": "Set the subnet mask to 255.255.255.0."
+    }
+  ],
+  "scoring": {
+    "baseScore": 100,
+    "hintPenalty": 10,
+    "maxHints": 3
+  }
+}

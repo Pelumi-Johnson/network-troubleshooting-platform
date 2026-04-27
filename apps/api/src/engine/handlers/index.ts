@@ -12,6 +12,24 @@ function isValidIPv4(value: string) {
   });
 }
 
+function ipv4ToNumber(value: string) {
+  return value.split(".").reduce((total, part) => {
+    return total * 256 + Number(part);
+  }, 0);
+}
+
+function areInSameSubnet(ipA: string, ipB: string, mask: string) {
+  if (!isValidIPv4(ipA) || !isValidIPv4(ipB) || !isValidIPv4(mask)) {
+    return false;
+  }
+
+  const ipANumber = ipv4ToNumber(ipA);
+  const ipBNumber = ipv4ToNumber(ipB);
+  const maskNumber = ipv4ToNumber(mask);
+
+  return (ipANumber & maskNumber) === (ipBNumber & maskNumber);
+}
+
 function isValidSubnetMask(value: string) {
   const validMasks = new Set([
     "255.255.255.255",
@@ -46,7 +64,7 @@ function isValidSubnetMask(value: string) {
     "224.0.0.0",
     "192.0.0.0",
     "128.0.0.0",
-    "0.0.0.0",
+    "0.0.0.0"
   ]);
 
   return validMasks.has(value);
@@ -62,7 +80,7 @@ export function handleIpconfig(device: any) {
     "",
     `IPv4 Address. . . . . . . . . . . : ${device.network.ip}`,
     `Subnet Mask . . . . . . . . . . . : ${device.network.mask}`,
-    `Default Gateway . . . . . . . . . : ${device.network.gateway}`,
+    `Default Gateway . . . . . . . . . : ${device.network.gateway}`
   ];
 
   if (device.network.dns !== undefined) {
@@ -85,17 +103,36 @@ export function handlePing(device: any, target: string, state: any) {
         "Reply from 142.250.190.78: bytes=32 time=13ms TTL=117",
         "",
         "Ping statistics for 142.250.190.78:",
-        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)",
+        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)"
       ].join("\n");
     }
 
     return [
       "Ping request could not find host google.com.",
-      "Please check the name and try again.",
+      "Please check the name and try again."
     ].join("\n");
   }
 
   if (target === device.network.gateway) {
+    const gatewayAppearsLocal = areInSameSubnet(
+      device.network.ip,
+      target,
+      device.network.mask
+    );
+
+    if (!gatewayAppearsLocal) {
+      return [
+        `Pinging ${target} with 32 bytes of data:`,
+        "Destination host unreachable.",
+        "Destination host unreachable.",
+        "",
+        `Ping statistics for ${target}:`,
+        "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)",
+        "",
+        "Hint: The default gateway is outside the PC's current subnet."
+      ].join("\n");
+    }
+
     const router = Object.values(state.devices || {}).find(
       (item: any) => item.type === "router"
     ) as any;
@@ -112,7 +149,7 @@ export function handlePing(device: any, target: string, state: any) {
         `Reply from ${target}: bytes=32 time<1ms TTL=255`,
         "",
         `Ping statistics for ${target}:`,
-        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)",
+        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)"
       ].join("\n");
     }
 
@@ -122,7 +159,7 @@ export function handlePing(device: any, target: string, state: any) {
       "Request timed out.",
       "",
       `Ping statistics for ${target}:`,
-      "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)",
+      "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)"
     ].join("\n");
   }
 
@@ -134,7 +171,7 @@ export function handlePing(device: any, target: string, state: any) {
         "Reply from 8.8.8.8: bytes=32 time=13ms TTL=117",
         "",
         "Ping statistics for 8.8.8.8:",
-        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)",
+        "    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss)"
       ].join("\n");
     }
 
@@ -144,7 +181,7 @@ export function handlePing(device: any, target: string, state: any) {
       "Destination host unreachable.",
       "",
       "Ping statistics for 8.8.8.8:",
-      "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)",
+      "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)"
     ].join("\n");
   }
 
@@ -154,7 +191,7 @@ export function handlePing(device: any, target: string, state: any) {
     "Request timed out.",
     "",
     `Ping statistics for ${target}:`,
-    "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)",
+    "    Packets: Sent = 2, Received = 0, Lost = 2 (100% loss)"
   ].join("\n");
 }
 
@@ -171,7 +208,7 @@ export function handleSetGateway(device: any, ip: string) {
 
   return [
     `Default gateway updated to ${ip}.`,
-    "Run ipconfig to verify the new configuration.",
+    "Run ipconfig to verify the new configuration."
   ].join("\n");
 }
 
@@ -188,7 +225,7 @@ export function handleSetDns(device: any, ip: string) {
 
   return [
     `DNS server updated to ${ip}.`,
-    "Run ipconfig to verify the new configuration.",
+    "Run ipconfig to verify the new configuration."
   ].join("\n");
 }
 
@@ -200,7 +237,7 @@ export function handleSetSubnetMask(device: any, mask: string) {
   if (!isValidSubnetMask(mask)) {
     return [
       `Invalid subnet mask: ${mask}`,
-      "Use a valid subnet mask such as 255.255.255.0.",
+      "Use a valid subnet mask such as 255.255.255.0."
     ].join("\n");
   }
 
@@ -208,7 +245,7 @@ export function handleSetSubnetMask(device: any, mask: string) {
 
   return [
     `Subnet mask updated to ${mask}.`,
-    "Run ipconfig to verify the new configuration.",
+    "Run ipconfig to verify the new configuration."
   ].join("\n");
 }
 

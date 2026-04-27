@@ -13,38 +13,42 @@ export interface LabSummary {
 class LabsService {
   private labsDirectory = path.join(__dirname, "..", "labs");
 
-  getAllLabs(): LabSummary[] {
-    const files = fs.readdirSync(this.labsDirectory);
-
-    const labs = files
+  private getLabFiles() {
+    return fs
+      .readdirSync(this.labsDirectory)
       .filter((file) => file.endsWith(".json"))
-      .map((file) => {
-        const filePath = path.join(this.labsDirectory, file);
-        const fileContents = fs.readFileSync(filePath, "utf-8");
-        const lab = JSON.parse(fileContents);
+      .sort();
+  }
 
-        return {
-          id: lab.id,
-          slug: lab.slug,
-          title: lab.title,
-          difficulty: lab.difficulty,
-          category: lab.category,
-          estimatedMinutes: lab.estimatedMinutes
-        };
-      });
+  private readLabFile(file: string) {
+    const filePath = path.join(this.labsDirectory, file);
+    const fileContents = fs.readFileSync(filePath, "utf-8");
 
-    return labs;
+    return JSON.parse(fileContents);
+  }
+
+  getAllLabs(): LabSummary[] {
+    const files = this.getLabFiles();
+
+    return files.map((file) => {
+      const lab = this.readLabFile(file);
+
+      return {
+        id: lab.id,
+        slug: lab.slug,
+        title: lab.title,
+        difficulty: lab.difficulty,
+        category: lab.category,
+        estimatedMinutes: lab.estimatedMinutes,
+      };
+    });
   }
 
   getLabBySlug(slug: string) {
-    const files = fs.readdirSync(this.labsDirectory);
+    const files = this.getLabFiles();
 
     for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-
-      const filePath = path.join(this.labsDirectory, file);
-      const fileContents = fs.readFileSync(filePath, "utf-8");
-      const lab = JSON.parse(fileContents);
+      const lab = this.readLabFile(file);
 
       if (lab.slug === slug) {
         return lab;
@@ -55,14 +59,10 @@ class LabsService {
   }
 
   getLabById(id: string) {
-    const files = fs.readdirSync(this.labsDirectory);
+    const files = this.getLabFiles();
 
     for (const file of files) {
-      if (!file.endsWith(".json")) continue;
-
-      const filePath = path.join(this.labsDirectory, file);
-      const fileContents = fs.readFileSync(filePath, "utf-8");
-      const lab = JSON.parse(fileContents);
+      const lab = this.readLabFile(file);
 
       if (lab.id === id) {
         return lab;
