@@ -1,12 +1,13 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { labSessionsService } from "../services/labSessionsService";
 import { commandService } from "../services/commandService";
+import type { AuthenticatedRequest } from "../middleware/authMiddleware";
 
 export const labSessionsController = {
-  async startSession(req: Request, res: Response): Promise<void> {
+  async startSession(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const slug = String(req.params.slug);
-      const session = await labSessionsService.startSession(slug);
+      const session = await labSessionsService.startSession(slug, req.user?.id);
 
       if (!session) {
         res.status(404).json({ message: "Lab not found" });
@@ -22,7 +23,7 @@ export const labSessionsController = {
     }
   },
 
-  async getSession(req: Request, res: Response): Promise<void> {
+  async getSession(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const sessionId = String(req.params.sessionId);
       const session = await labSessionsService.getSession(sessionId);
@@ -41,9 +42,12 @@ export const labSessionsController = {
     }
   },
 
-  async getActiveSessions(req: Request, res: Response): Promise<void> {
+  async getActiveSessions(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
-      const sessions = await labSessionsService.getActiveSessions();
+      const sessions = await labSessionsService.getActiveSessions(req.user?.id);
 
       res.json(
         sessions.map((session) => ({
@@ -64,10 +68,16 @@ export const labSessionsController = {
     }
   },
 
-  async clearActiveSession(req: Request, res: Response): Promise<void> {
+  async clearActiveSession(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const labSlug = String(req.params.labSlug);
-      const result = await labSessionsService.clearActiveSession(labSlug);
+      const result = await labSessionsService.clearActiveSession(
+        labSlug,
+        req.user?.id
+      );
 
       res.json(result);
     } catch (error) {
@@ -78,7 +88,7 @@ export const labSessionsController = {
     }
   },
 
-  async executeCommand(req: Request, res: Response): Promise<void> {
+  async executeCommand(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const sessionId = String(req.params.sessionId);
       const { deviceId, command } = req.body;

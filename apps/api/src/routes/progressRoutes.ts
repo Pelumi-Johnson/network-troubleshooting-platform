@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { progressController } from "../controllers/progressController";
+import { optionalAuth } from "../middleware/authMiddleware";
 
 const router = Router();
+
+router.use(optionalAuth);
 
 router.get("/", progressController.getProgress);
 router.get("/attempts", progressController.getAttempts);

@@ -44,3 +44,31 @@ export async function requireAuth(
     });
   }
 }
+
+export async function optionalAuth(
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      next();
+      return;
+    }
+
+    const token = authHeader.replace("Bearer ", "").trim();
+    const payload = authService.verifyToken(token);
+
+    const user = await authService.getUserById(payload.sub);
+
+    if (user) {
+      req.user = user;
+    }
+
+    next();
+  } catch {
+    next();
+  }
+}

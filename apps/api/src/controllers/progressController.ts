@@ -1,10 +1,11 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { progressService } from "../services/progressService";
+import type { AuthenticatedRequest } from "../middleware/authMiddleware";
 
 export const progressController = {
-  async getProgress(req: Request, res: Response): Promise<void> {
+  async getProgress(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const progress = await progressService.getProgress();
+      const progress = await progressService.getProgress(req.user?.id);
       res.json(progress);
     } catch (error) {
       res.status(500).json({
@@ -14,9 +15,9 @@ export const progressController = {
     }
   },
 
-  async getAttempts(req: Request, res: Response): Promise<void> {
+  async getAttempts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const attempts = await progressService.getAttempts();
+      const attempts = await progressService.getAttempts(req.user?.id);
       res.json(attempts);
     } catch (error) {
       res.status(500).json({
@@ -26,7 +27,7 @@ export const progressController = {
     }
   },
 
-  async saveProgress(req: Request, res: Response): Promise<void> {
+  async saveProgress(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { labSlug, score } = req.body;
 
@@ -39,7 +40,8 @@ export const progressController = {
 
       const progress = await progressService.saveProgress(
         String(labSlug),
-        Number(score)
+        Number(score),
+        req.user?.id
       );
 
       res.status(201).json(progress);
@@ -51,10 +53,13 @@ export const progressController = {
     }
   },
 
-  async deleteProgress(req: Request, res: Response): Promise<void> {
+  async deleteProgress(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const labSlug = String(req.params.labSlug);
-      const result = await progressService.deleteProgress(labSlug);
+      const result = await progressService.deleteProgress(
+        labSlug,
+        req.user?.id
+      );
 
       if (!result) {
         res.status(404).json({
@@ -72,9 +77,9 @@ export const progressController = {
     }
   },
 
-  async clearProgress(req: Request, res: Response): Promise<void> {
+  async clearProgress(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const result = await progressService.clearProgress();
+      const result = await progressService.clearProgress(req.user?.id);
       res.json(result);
     } catch (error) {
       res.status(500).json({
@@ -84,9 +89,9 @@ export const progressController = {
     }
   },
 
-  async clearAttempts(req: Request, res: Response): Promise<void> {
+  async clearAttempts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const result = await progressService.clearAttempts();
+      const result = await progressService.clearAttempts(req.user?.id);
       res.json(result);
     } catch (error) {
       res.status(500).json({

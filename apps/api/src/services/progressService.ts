@@ -34,12 +34,21 @@ function formatAttempt(item: AttemptRecord) {
 }
 
 class ProgressService {
-  async getProgress() {
+  private async getEffectiveUserId(userId?: string) {
+    if (userId) {
+      return userId;
+    }
+
     const demoUser = await identityService.getDemoUser();
+    return demoUser.id;
+  }
+
+  async getProgress(userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     const progress = await prisma.labProgress.findMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
       orderBy: {
         completedAt: "desc",
@@ -49,12 +58,12 @@ class ProgressService {
     return progress.map((item: ProgressRecord) => formatProgress(item));
   }
 
-  async getAttempts() {
-    const demoUser = await identityService.getDemoUser();
+  async getAttempts(userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     const attempts = await prisma.labAttempt.findMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
       orderBy: {
         completedAt: "desc",
@@ -64,13 +73,13 @@ class ProgressService {
     return attempts.map((item: AttemptRecord) => formatAttempt(item));
   }
 
-  async saveProgress(labSlug: string, score: number) {
-    const demoUser = await identityService.getDemoUser();
+  async saveProgress(labSlug: string, score: number, userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     await prisma.labAttempt.create({
       data: {
         labSlug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
         score,
       },
     });
@@ -78,7 +87,7 @@ class ProgressService {
     const existingProgress = await prisma.labProgress.findFirst({
       where: {
         labSlug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
     });
 
@@ -99,7 +108,7 @@ class ProgressService {
     const newProgress = await prisma.labProgress.create({
       data: {
         labSlug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
         score,
       },
     });
@@ -107,13 +116,13 @@ class ProgressService {
     return formatProgress(newProgress);
   }
 
-  async deleteProgress(labSlug: string) {
-    const demoUser = await identityService.getDemoUser();
+  async deleteProgress(labSlug: string, userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     const existingProgress = await prisma.labProgress.findFirst({
       where: {
         labSlug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
     });
 
@@ -133,12 +142,12 @@ class ProgressService {
     };
   }
 
-  async clearProgress() {
-    const demoUser = await identityService.getDemoUser();
+  async clearProgress(userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     await prisma.labProgress.deleteMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
     });
 
@@ -147,12 +156,12 @@ class ProgressService {
     };
   }
 
-  async clearAttempts() {
-    const demoUser = await identityService.getDemoUser();
+  async clearAttempts(userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     await prisma.labAttempt.deleteMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
       },
     });
 

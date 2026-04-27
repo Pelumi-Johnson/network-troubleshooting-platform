@@ -153,7 +153,7 @@ class CommandService {
         lastCommand.output = output;
       }
 
-      await progressService.saveProgress(lab.slug, session.score);
+      await progressService.saveProgress(lab.slug, session.score, session.userId);
     }
 
     const savedSession = await labSessionsService.updateSession(session);

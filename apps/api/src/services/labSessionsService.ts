@@ -67,19 +67,28 @@ function toSession(record: any): LabSession {
 }
 
 class LabSessionsService {
-  async startSession(slug: string): Promise<LabSession | null> {
+  private async getEffectiveUserId(userId?: string) {
+    if (userId) {
+      return userId;
+    }
+
+    const demoUser = await identityService.getDemoUser();
+    return demoUser.id;
+  }
+
+  async startSession(slug: string, userId?: string): Promise<LabSession | null> {
     const lab = labsService.getLabBySlug(slug);
 
     if (!lab) {
       return null;
     }
 
-    const demoUser = await identityService.getDemoUser();
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     await prisma.labSession.updateMany({
       where: {
         labSlug: lab.slug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
         status: "in_progress",
       },
       data: {
@@ -95,7 +104,7 @@ class LabSessionsService {
       data: {
         labId: lab.id,
         labSlug: lab.slug,
-        userId: demoUser.id,
+        userId: effectiveUserId,
         status: "in_progress",
         selectedDevice: null,
         score: lab.scoring.baseScore,
@@ -124,12 +133,12 @@ class LabSessionsService {
     return toSession(session);
   }
 
-  async getActiveSessions(): Promise<LabSession[]> {
-    const demoUser = await identityService.getDemoUser();
+  async getActiveSessions(userId?: string): Promise<LabSession[]> {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     const sessions = await prisma.labSession.findMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
         status: "in_progress",
       },
       orderBy: {
@@ -140,12 +149,15 @@ class LabSessionsService {
     return sessions.map(toSession);
   }
 
-  async getActiveSessionBySlug(slug: string): Promise<LabSession | null> {
-    const demoUser = await identityService.getDemoUser();
+  async getActiveSessionBySlug(
+    slug: string,
+    userId?: string
+  ): Promise<LabSession | null> {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     const session = await prisma.labSession.findFirst({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
         labSlug: slug,
         status: "in_progress",
       },
@@ -161,12 +173,12 @@ class LabSessionsService {
     return toSession(session);
   }
 
-  async clearActiveSession(slug: string) {
-    const demoUser = await identityService.getDemoUser();
+  async clearActiveSession(slug: string, userId?: string) {
+    const effectiveUserId = await this.getEffectiveUserId(userId);
 
     await prisma.labSession.updateMany({
       where: {
-        userId: demoUser.id,
+        userId: effectiveUserId,
         labSlug: slug,
         status: "in_progress",
       },
