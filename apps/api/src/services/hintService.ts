@@ -1,5 +1,13 @@
-import { labsService } from "./labsService";
 import { labSessionsService } from "./labSessionsService";
+import { labsService } from "./labsService";
+
+function getHintPenalty(lab: any) {
+  return lab.scoring?.hintPenalty ?? 10;
+}
+
+function getMaxHints(lab: any) {
+  return lab.scoring?.maxHints ?? 3;
+}
 
 class HintService {
   async getHint(sessionId: string) {
@@ -8,16 +16,7 @@ class HintService {
     if (!session) {
       return {
         ok: false,
-        statusCode: 404,
-        message: "Session not found.",
-      };
-    }
-
-    if (session.status === "completed") {
-      return {
-        ok: false,
-        statusCode: 400,
-        message: "Lab is already completed.",
+        message: "Session not found",
       };
     }
 
@@ -26,40 +25,56 @@ class HintService {
     if (!lab) {
       return {
         ok: false,
-        statusCode: 404,
-        message: "Lab definition not found.",
+        message: "Lab definition not found",
       };
     }
 
-    const hints = lab.hints || [];
-    const maxHints = lab.scoring?.maxHints || hints.length;
-
-    if (session.hintsUsed >= maxHints || session.hintsUsed >= hints.length) {
+    if (session.status === "completed") {
       return {
         ok: false,
-        statusCode: 400,
-        message: "No more hints available.",
+        message: "This lab is already completed.",
       };
     }
 
-    const hint = hints[session.hintsUsed];
+    if (session.status === "abandoned") {
+      return {
+        ok: false,
+        message: "This session was abandoned. Start a new session.",
+      };
+    }
+
+    const maxHints = getMaxHints(lab);
+
+    if (session.hintsUsed >= maxHints) {
+      return {
+        ok: false,
+        message: "No more hints available for this lab.",
+      };
+    }
+
+    const nextHintIndex = session.hintsUsed;
+    const hint = lab.hints?.[nextHintIndex];
+
+    if (!hint) {
+      return {
+        ok: false,
+        message: "No hint available.",
+      };
+    }
+
+    const penalty = getHintPenalty(lab);
 
     session.hintsUsed += 1;
-    session.score = Math.max(
-      0,
-      session.score - (lab.scoring?.hintPenalty || 0)
-    );
+    session.score = Math.max(0, session.score - penalty);
 
-    const updatedSession = await labSessionsService.updateSession(session);
+    await labSessionsService.updateSession(session);
 
     return {
       ok: true,
-      statusCode: 200,
-      hintLevel: hint.level,
       text: hint.text,
-      score: updatedSession.score,
-      hintsUsed: updatedSession.hintsUsed,
-      remainingHints: Math.max(0, maxHints - updatedSession.hintsUsed),
+      hintsUsed: session.hintsUsed,
+      score: session.score,
+      penalty,
     };
   }
 }

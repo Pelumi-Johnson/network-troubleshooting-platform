@@ -5,14 +5,10 @@ export const hintsController = {
   async getHint(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = String(req.params.sessionId);
-
       const result = await hintService.getHint(sessionId);
 
       if (!result.ok) {
-        res.status(result.statusCode).json({
-          ok: false,
-          message: result.message,
-        });
+        res.status(400).json(result);
         return;
       }
 

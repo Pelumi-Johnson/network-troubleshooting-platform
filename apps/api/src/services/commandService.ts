@@ -31,6 +31,14 @@ const allowedCommandsByDeviceType: Record<string, CommandKey[]> = {
   ],
 };
 
+function getWrongCommandPenalty(lab: any) {
+  return lab.scoring?.wrongCommandPenalty ?? 2;
+}
+
+function applyScorePenalty(session: any, penalty: number) {
+  session.score = Math.max(0, session.score - penalty);
+}
+
 function getCommandError(deviceType: string, command: string) {
   if (deviceType === "pc") {
     return [
@@ -54,6 +62,50 @@ function getUnknownCommandFeedback(command: string) {
     `Unknown command: ${command}`,
     "Hint: Use the command suggestions above or press Tab after typing a prefix.",
   ].join("\n");
+}
+
+async function saveFailedCommand({
+  session,
+  deviceId,
+  command,
+  output,
+  penalty,
+}: {
+  session: any;
+  deviceId: string;
+  command: string;
+  output: string;
+  penalty: number;
+}) {
+  applyScorePenalty(session, penalty);
+
+  const outputWithPenalty = [
+    output,
+    "",
+    `Score penalty: -${penalty}`,
+    `Current score: ${session.score}`,
+  ].join("\n");
+
+  session.commandHistory.push({
+    deviceId,
+    command,
+    output: outputWithPenalty,
+    ok: false,
+    penalty,
+    timestamp: new Date().toISOString(),
+  });
+
+  const savedSession = await labSessionsService.updateSession(session);
+
+  return {
+    ok: true,
+    deviceId,
+    command,
+    output: outputWithPenalty,
+    status: savedSession.status,
+    score: savedSession.score,
+    completed: false,
+  };
 }
 
 class CommandService {
@@ -84,15 +136,6 @@ class CommandService {
       };
     }
 
-    const parsed = parseCommand(rawCommand);
-
-    if (!parsed) {
-      return {
-        ok: false,
-        output: getUnknownCommandFeedback(rawCommand),
-      };
-    }
-
     const device = session.state.devices[deviceId];
 
     if (!device) {
@@ -104,15 +147,29 @@ class CommandService {
 
     session.selectedDeviceId = deviceId;
 
+    const parsed = parseCommand(rawCommand);
+    const wrongCommandPenalty = getWrongCommandPenalty(lab);
+
+    if (!parsed) {
+      return saveFailedCommand({
+        session,
+        deviceId,
+        command: rawCommand,
+        output: getUnknownCommandFeedback(rawCommand),
+        penalty: wrongCommandPenalty,
+      });
+    }
+
     const allowedCommands = allowedCommandsByDeviceType[device.type] || [];
 
     if (!allowedCommands.includes(parsed.commandKey)) {
-      return {
-        ok: false,
+      return saveFailedCommand({
+        session,
         deviceId,
         command: rawCommand,
         output: getCommandError(device.type, rawCommand),
-      };
+        penalty: wrongCommandPenalty,
+      });
     }
 
     let output = "";
@@ -123,13 +180,20 @@ class CommandService {
       const context = getCliContext(session, deviceId);
       output = handleNetworkDeviceCommand(parsed, device, context);
     } else {
-      output = "Command not supported on this device.";
+      return saveFailedCommand({
+        session,
+        deviceId,
+        command: rawCommand,
+        output: "Command not supported on this device.",
+        penalty: wrongCommandPenalty,
+      });
     }
 
     session.commandHistory.push({
       deviceId,
       command: rawCommand,
       output,
+      ok: true,
       timestamp: new Date().toISOString(),
     });
 
@@ -144,6 +208,8 @@ class CommandService {
         "",
         "✔ Lab objective completed.",
         lab.scenario.completionMessage,
+        "",
+        `Final score: ${session.score}`,
       ].join("\n");
 
       const lastCommand =
