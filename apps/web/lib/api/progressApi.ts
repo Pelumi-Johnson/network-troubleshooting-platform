@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "@/lib/auth/authStorage";
+
 const API_BASE_URL = "http://localhost:5000/api";
 
 export type LabProgress = {
@@ -15,7 +17,11 @@ export type LabAttempt = {
 };
 
 export async function getProgress(): Promise<LabProgress[]> {
-  const response = await fetch(`${API_BASE_URL}/progress`);
+  const response = await fetch(`${API_BASE_URL}/progress`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load progress");
@@ -25,7 +31,11 @@ export async function getProgress(): Promise<LabProgress[]> {
 }
 
 export async function getAttempts(): Promise<LabAttempt[]> {
-  const response = await fetch(`${API_BASE_URL}/progress/attempts`);
+  const response = await fetch(`${API_BASE_URL}/progress/attempts`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load attempts");
@@ -39,6 +49,7 @@ export async function saveProgress(labSlug: string, score: number) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ labSlug, score }),
   });
@@ -53,6 +64,9 @@ export async function saveProgress(labSlug: string, score: number) {
 export async function deleteProgress(labSlug: string) {
   const response = await fetch(`${API_BASE_URL}/progress/${labSlug}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {
@@ -65,6 +79,9 @@ export async function deleteProgress(labSlug: string) {
 export async function clearProgress() {
   const response = await fetch(`${API_BASE_URL}/progress`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {
@@ -77,6 +94,9 @@ export async function clearProgress() {
 export async function clearAttempts() {
   const response = await fetch(`${API_BASE_URL}/progress/attempts`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {

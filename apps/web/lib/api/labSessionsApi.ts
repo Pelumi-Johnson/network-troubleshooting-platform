@@ -1,3 +1,5 @@
+import { getAuthHeaders } from "@/lib/auth/authStorage";
+
 const API_BASE_URL = "http://localhost:5000/api";
 
 export type ActiveLabSession = {
@@ -11,7 +13,11 @@ export type ActiveLabSession = {
 };
 
 export async function getLabSession(sessionId: string) {
-  const response = await fetch(`${API_BASE_URL}/lab-sessions/${sessionId}`);
+  const response = await fetch(`${API_BASE_URL}/lab-sessions/${sessionId}`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load lab session");
@@ -21,7 +27,11 @@ export async function getLabSession(sessionId: string) {
 }
 
 export async function getActiveLabSessions(): Promise<ActiveLabSession[]> {
-  const response = await fetch(`${API_BASE_URL}/lab-sessions/active`);
+  const response = await fetch(`${API_BASE_URL}/lab-sessions/active`, {
+    headers: {
+      ...getAuthHeaders(),
+    },
+  });
 
   if (!response.ok) {
     throw new Error("Failed to load active lab sessions");
@@ -33,6 +43,9 @@ export async function getActiveLabSessions(): Promise<ActiveLabSession[]> {
 export async function clearActiveLabSession(labSlug: string) {
   const response = await fetch(`${API_BASE_URL}/lab-sessions/active/${labSlug}`, {
     method: "DELETE",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {
@@ -51,6 +64,7 @@ export async function executeCommand(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ deviceId, command }),
   });
@@ -65,6 +79,9 @@ export async function executeCommand(
 export async function requestHint(sessionId: string) {
   const response = await fetch(`${API_BASE_URL}/lab-sessions/${sessionId}/hint`, {
     method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   return response.json();
