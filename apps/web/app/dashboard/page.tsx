@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getAllLabs } from "@/lib/api/labsApi";
 import {
   clearProgress,
@@ -26,6 +26,14 @@ type LabSummary = {
   estimatedMinutes: number;
 };
 
+type FilterKey =
+  | "all"
+  | "not-started"
+  | "in-progress"
+  | "completed"
+  | "easy"
+  | "medium";
+
 function getDifficultyStyle(difficulty: string) {
   if (difficulty === "easy") {
     return "bg-green-500/15 text-green-400 border-green-500/30";
@@ -36,6 +44,18 @@ function getDifficultyStyle(difficulty: string) {
   }
 
   return "bg-red-500/15 text-red-400 border-red-500/30";
+}
+
+function getCategoryStyle(category: string) {
+  const styles: Record<string, string> = {
+    dns: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    routing: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    switching: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    subnetting: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    "default-gateway": "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  };
+
+  return styles[category] || "bg-slate-500/15 text-slate-400 border-slate-500/30";
 }
 
 function getActiveSessionKey(slug: string) {
@@ -74,6 +94,19 @@ function attemptsListToMap(attemptsList: LabAttempt[]) {
   return attemptsMap;
 }
 
+function getLabStatus(
+  lab: LabSummary,
+  progress: Record<string, LabProgress>,
+  activeSessions: Record<string, boolean>
+) {
+  const completed = Boolean(progress[lab.slug]);
+  const inProgress = Boolean(activeSessions[lab.slug]) && !completed;
+
+  if (completed) return "completed";
+  if (inProgress) return "in-progress";
+  return "not-started";
+}
+
 export default function DashboardPage() {
   const { user, checkingAuth, logout } = useRequireAuth();
 
@@ -83,6 +116,7 @@ export default function DashboardPage() {
   const [activeSessions, setActiveSessions] = useState<Record<string, boolean>>(
     {}
   );
+  const [filter, setFilter] = useState<FilterKey>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -173,14 +207,6 @@ export default function DashboardPage() {
     }));
   }
 
-  if (checkingAuth) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white p-8">
-        Checking login...
-      </main>
-    );
-  }
-
   const completedCount = labs.filter((lab) => progress[lab.slug]).length;
 
   const inProgressCount = labs.filter(
@@ -206,126 +232,281 @@ export default function DashboardPage() {
   const completionPercent =
     labs.length > 0 ? Math.round((completedCount / labs.length) * 100) : 0;
 
+  const recommendedLab = useMemo(() => {
+    const activeLab = labs.find(
+      (lab) => activeSessions[lab.slug] && !progress[lab.slug]
+    );
+
+    if (activeLab) return activeLab;
+
+    return labs.find((lab) => !progress[lab.slug]) || null;
+  }, [labs, progress, activeSessions]);
+
+  const filteredLabs = labs.filter((lab) => {
+    const status = getLabStatus(lab, progress, activeSessions);
+
+    if (filter === "all") return true;
+    if (filter === "completed") return status === "completed";
+    if (filter === "in-progress") return status === "in-progress";
+    if (filter === "not-started") return status === "not-started";
+    if (filter === "easy") return lab.difficulty === "easy";
+    if (filter === "medium") return lab.difficulty === "medium";
+
+    return true;
+  });
+
+  const filters: Array<{ key: FilterKey; label: string; count?: number }> = [
+    { key: "all", label: "All", count: labs.length },
+    { key: "not-started", label: "Not Started", count: notStartedCount },
+    { key: "in-progress", label: "In Progress", count: inProgressCount },
+    { key: "completed", label: "Completed", count: completedCount },
+    {
+      key: "easy",
+      label: "Easy",
+      count: labs.filter((lab) => lab.difficulty === "easy").length,
+    },
+    {
+      key: "medium",
+      label: "Medium",
+      count: labs.filter((lab) => lab.difficulty === "medium").length,
+    },
+  ];
+
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white p-8">
+        Checking login...
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="border-b border-slate-800 bg-slate-950/80">
-        <div className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
-          <div>
-            <p className="text-blue-400 text-sm font-semibold mb-1">
-              Network Troubleshooting Platform
-            </p>
-            <h1 className="text-3xl font-bold">
-              Fix broken networks. Build real troubleshooting skill.
-            </h1>
-            <p className="text-slate-500 text-sm mt-2">
-              Signed in as{" "}
-              <span className="text-slate-300">
-                {user?.name || user?.email}
+    <main className="min-h-screen bg-slate-950 text-white overflow-hidden">
+      <section className="relative border-b border-slate-800">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_32%),radial-gradient(circle_at_top_right,rgba(139,92,246,0.16),transparent_30%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.035)_1px,transparent_1px)] bg-[size:42px_42px]" />
+
+        <div className="relative max-w-7xl mx-auto px-8 py-8">
+          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-10">
+            <div>
+              <p className="text-blue-400 text-sm font-semibold mb-2">
+                Network Troubleshooting Platform
+              </p>
+              <h1 className="text-4xl font-black tracking-tight">
+                Training Dashboard
+              </h1>
+              <p className="text-slate-400 mt-2">
+                Welcome back,{" "}
+                <span className="text-slate-200 font-semibold">
+                  {user?.name || user?.email}
+                </span>
+                . Continue building real troubleshooting skill.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 text-sm">
+              <span className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2 text-slate-300">
+                CCNA Track
               </span>
-            </p>
-          </div>
 
-          <div className="hidden md:flex gap-3 text-sm text-slate-400">
-            <span className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2">
-              CCNA Track
-            </span>
+              <Link
+                href="/profile"
+                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
+              >
+                Profile
+              </Link>
 
-            <Link
-              href="/profile"
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-300"
-            >
-              Profile
-            </Link>
+              <button
+                type="button"
+                onClick={handleClearProgress}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl px-4 py-2"
+              >
+                Reset Progress
+              </button>
 
-            <button
-              type="button"
-              onClick={handleClearProgress}
-              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg px-4 py-2"
-            >
-              Reset Progress
-            </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
+              >
+                Logout
+              </button>
+            </div>
+          </nav>
 
-            <button
-              type="button"
-              onClick={logout}
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-300"
-            >
-              Logout
-            </button>
-          </div>
+          <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+            <div className="xl:col-span-7 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+              <div className="flex items-start justify-between gap-5 mb-5">
+                <div>
+                  <p className="text-slate-400 text-sm mb-2">
+                    Overall completion
+                  </p>
+                  <div className="flex items-end gap-3">
+                    <p className="text-6xl font-black text-blue-400">
+                      {completionPercent}%
+                    </p>
+                    <p className="text-slate-400 mb-2">
+                      {completedCount} of {labs.length} labs completed
+                    </p>
+                  </div>
+                </div>
+
+                <div className="hidden md:block text-right">
+                  <p className="text-slate-500 text-sm">Average Score</p>
+                  <p className="text-3xl font-bold">{averageScore}</p>
+                </div>
+              </div>
+
+              <div className="h-4 bg-slate-950 border border-slate-800 rounded-full overflow-hidden mb-6">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+                  style={{ width: `${completionPercent}%` }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-slate-500 text-xs uppercase tracking-wide">
+                    Completed
+                  </p>
+                  <p className="text-3xl font-bold text-green-400 mt-2">
+                    {completedCount}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-slate-500 text-xs uppercase tracking-wide">
+                    In Progress
+                  </p>
+                  <p className="text-3xl font-bold text-yellow-400 mt-2">
+                    {inProgressCount}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-slate-500 text-xs uppercase tracking-wide">
+                    Attempts
+                  </p>
+                  <p className="text-3xl font-bold text-violet-400 mt-2">
+                    {totalAttempts}
+                  </p>
+                </div>
+
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+                  <p className="text-slate-500 text-xs uppercase tracking-wide">
+                    Labs
+                  </p>
+                  <p className="text-3xl font-bold mt-2">{labs.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-slate-400 text-sm mb-1">
+                    Recommended Next
+                  </p>
+                  <h2 className="text-2xl font-bold">
+                    {recommendedLab?.title || "Track Complete"}
+                  </h2>
+                </div>
+
+                {recommendedLab && (
+                  <span
+                    className={`border rounded-full px-3 py-1 text-xs uppercase tracking-wide ${getDifficultyStyle(
+                      recommendedLab.difficulty
+                    )}`}
+                  >
+                    {recommendedLab.difficulty}
+                  </span>
+                )}
+              </div>
+
+              {recommendedLab ? (
+                <>
+                  <p className="text-slate-400 mb-5">
+                    {activeSessions[recommendedLab.slug] &&
+                    !progress[recommendedLab.slug]
+                      ? "You have an active session waiting. Resume where you left off."
+                      : "Start the next unfinished lab in your troubleshooting track."}
+                  </p>
+
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 mb-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                        className={`border rounded-full px-3 py-1 text-xs ${getCategoryStyle(
+                          recommendedLab.category
+                        )}`}
+                      >
+                        {recommendedLab.category}
+                      </span>
+
+                      <span className="text-slate-500 text-sm">
+                        {recommendedLab.estimatedMinutes} min
+                      </span>
+                    </div>
+
+                    <div className="h-24 rounded-xl border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.18),transparent_35%)] flex items-center justify-center text-slate-500">
+                      Simulator workspace
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/labs/${recommendedLab.slug}`}
+                    className={`block text-center rounded-xl px-5 py-3 font-bold ${
+                      activeSessions[recommendedLab.slug] &&
+                      !progress[recommendedLab.slug]
+                        ? "bg-yellow-600 hover:bg-yellow-500 text-black"
+                        : "bg-blue-600 hover:bg-blue-500"
+                    }`}
+                  >
+                    {activeSessions[recommendedLab.slug] &&
+                    !progress[recommendedLab.slug]
+                      ? "Resume Lab"
+                      : "Start Lab"}
+                  </Link>
+                </>
+              ) : (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 text-green-300">
+                  You completed all available labs. Nice work.
+                </div>
+              )}
+            </div>
+          </section>
         </div>
       </section>
 
       <section className="max-w-7xl mx-auto px-8 py-10">
-        <div className="mb-10 bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold">Your Progress</h2>
-              <p className="text-slate-400 mt-1">
-                Track completion, scores, active sessions, and attempts.
-              </p>
-            </div>
-
-            <p className="text-4xl font-bold text-blue-400">
-              {completionPercent}%
-            </p>
-          </div>
-
-          <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 rounded-full"
-              style={{ width: `${completionPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-5 mb-10">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">Available Labs</p>
-            <p className="text-3xl font-bold">{labs.length}</p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">Completed</p>
-            <p className="text-3xl font-bold text-green-400">
-              {completedCount}
-            </p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">In Progress</p>
-            <p className="text-3xl font-bold text-yellow-400">
-              {inProgressCount}
-            </p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">Not Started</p>
-            <p className="text-3xl font-bold text-slate-300">
-              {notStartedCount}
-            </p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">Attempts</p>
-            <p className="text-3xl font-bold text-purple-400">
-              {totalAttempts}
-            </p>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <p className="text-slate-400 text-sm mb-2">Average Score</p>
-            <p className="text-3xl font-bold">{averageScore}</p>
-          </div>
-        </div>
-
-        <div className="flex items-end justify-between mb-6">
+        <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mb-8">
           <div>
-            <h2 className="text-2xl font-bold">Lab Library</h2>
-            <p className="text-slate-400 mt-1">
-              Continue active labs, review completed labs, or start new
-              troubleshooting scenarios.
+            <p className="text-blue-400 text-sm font-semibold mb-2">
+              Lab Library
             </p>
+            <h2 className="text-3xl font-black">Choose your next fault</h2>
+            <p className="text-slate-400 mt-2">
+              Filter by progress, difficulty, or continue active sessions.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {filters.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key)}
+                className={`rounded-full border px-4 py-2 text-sm transition ${
+                  filter === item.key
+                    ? "bg-blue-600 border-blue-500 text-white"
+                    : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                }`}
+              >
+                {item.label}
+                {typeof item.count === "number" && (
+                  <span className="ml-2 opacity-70">{item.count}</span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -343,11 +524,13 @@ export default function DashboardPage() {
 
         {!loading && !error && (
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {labs.map((lab) => {
+            {filteredLabs.map((lab) => {
               const labProgress = progress[lab.slug];
               const labAttempts = attempts[lab.slug] || [];
-              const completed = Boolean(labProgress);
-              const inProgress = Boolean(activeSessions[lab.slug]) && !completed;
+              const status = getLabStatus(lab, progress, activeSessions);
+
+              const completed = status === "completed";
+              const inProgress = status === "in-progress";
 
               const statusLabel = completed
                 ? "Completed"
@@ -364,7 +547,7 @@ export default function DashboardPage() {
               return (
                 <article
                   key={lab.id}
-                  className="group bg-slate-900 border border-slate-800 hover:border-blue-500/60 rounded-2xl p-6 transition shadow-lg"
+                  className="group bg-slate-900 border border-slate-800 hover:border-blue-500/60 rounded-3xl p-6 transition shadow-xl shadow-black/15"
                 >
                   <div className="flex items-center justify-between mb-5">
                     <span
@@ -386,51 +569,69 @@ export default function DashboardPage() {
                     {lab.title}
                   </h3>
 
-                  <p className="text-slate-400 text-sm mb-4">
-                    Category:{" "}
-                    <span className="text-slate-300">{lab.category}</span>
-                  </p>
+                  <div className="flex flex-wrap gap-2 mb-5">
+                    <span
+                      className={`text-xs border px-3 py-1 rounded-full ${getCategoryStyle(
+                        lab.category
+                      )}`}
+                    >
+                      {lab.category}
+                    </span>
+                    <span className="text-xs border border-slate-800 bg-slate-950 text-slate-400 px-3 py-1 rounded-full">
+                      {lab.estimatedMinutes} min
+                    </span>
+                  </div>
 
-                  <div className="h-36 rounded-xl bg-slate-950 border border-slate-800 mb-5 flex items-center justify-center px-4 text-center">
+                  <div className="h-40 rounded-2xl bg-slate-950 border border-slate-800 mb-5 p-5 flex flex-col justify-between">
                     {completed && labProgress ? (
-                      <div>
-                        <p className="text-green-400 font-bold mb-1">
-                          Completed
-                        </p>
-                        <p className="text-slate-300 text-sm">
-                          Best Score: {labProgress.score}
-                        </p>
-                        <p className="text-slate-400 text-sm">
-                          Attempts: {labAttempts.length}
-                        </p>
-                        <p className="text-slate-500 text-xs mt-1">
-                          Last Completed: {formatDate(labProgress.completedAt)}
-                        </p>
-                      </div>
+                      <>
+                        <div>
+                          <p className="text-green-400 font-bold mb-1">
+                            Completed
+                          </p>
+                          <p className="text-slate-400 text-sm">
+                            Best Score:{" "}
+                            <span className="text-slate-200">
+                              {labProgress.score}
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="text-sm text-slate-500">
+                          <p>Attempts: {labAttempts.length}</p>
+                          <p>Last: {formatDate(labProgress.completedAt)}</p>
+                        </div>
+                      </>
                     ) : inProgress ? (
-                      <div>
-                        <p className="text-yellow-400 font-bold mb-1">
-                          Active Session
-                        </p>
-                        <p className="text-slate-500 text-sm">
-                          Continue where you left off.
-                        </p>
-                        <p className="text-slate-500 text-sm">
+                      <>
+                        <div>
+                          <p className="text-yellow-400 font-bold mb-1">
+                            Active Session
+                          </p>
+                          <p className="text-slate-500 text-sm">
+                            Continue your current troubleshooting state.
+                          </p>
+                        </div>
+
+                        <p className="text-sm text-slate-500">
                           Attempts: {labAttempts.length}
                         </p>
-                      </div>
+                      </>
                     ) : (
-                      <div>
-                        <p className="text-slate-400 font-bold mb-1">
-                          Broken Topology
-                        </p>
-                        <p className="text-slate-500 text-sm">
-                          Start a new troubleshooting attempt.
-                        </p>
-                        <p className="text-slate-500 text-sm">
+                      <>
+                        <div>
+                          <p className="text-slate-300 font-bold mb-1">
+                            Fault Scenario
+                          </p>
+                          <p className="text-slate-500 text-sm">
+                            Start a fresh troubleshooting attempt.
+                          </p>
+                        </div>
+
+                        <p className="text-sm text-slate-500">
                           Attempts: {labAttempts.length}
                         </p>
-                      </div>
+                      </>
                     )}
                   </div>
 
@@ -461,6 +662,12 @@ export default function DashboardPage() {
                 </article>
               );
             })}
+
+            {filteredLabs.length === 0 && (
+              <div className="md:col-span-2 xl:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
+                No labs match this filter.
+              </div>
+            )}
           </section>
         )}
       </section>
