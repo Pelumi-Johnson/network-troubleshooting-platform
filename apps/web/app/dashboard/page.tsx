@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/layout/AppShell";
 import { getAllLabs } from "@/lib/api/labsApi";
 import {
   clearProgress,
@@ -55,7 +56,10 @@ function getCategoryStyle(category: string) {
     "default-gateway": "bg-blue-500/15 text-blue-400 border-blue-500/30",
   };
 
-  return styles[category] || "bg-slate-500/15 text-slate-400 border-slate-500/30";
+  return (
+    styles[category] ||
+    "bg-slate-500/15 text-slate-400 border-slate-500/30"
+  );
 }
 
 function getActiveSessionKey(slug: string) {
@@ -108,7 +112,7 @@ function getLabStatus(
 }
 
 export default function DashboardPage() {
-  const { user, checkingAuth, logout } = useRequireAuth();
+  const { user, checkingAuth } = useRequireAuth();
 
   const [labs, setLabs] = useState<LabSummary[]>([]);
   const [progress, setProgress] = useState<Record<string, LabProgress>>({});
@@ -281,203 +285,161 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white overflow-hidden">
-      <section className="relative border-b border-slate-800">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_32%),radial-gradient(circle_at_top_right,rgba(139,92,246,0.16),transparent_30%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.035)_1px,transparent_1px)] bg-[size:42px_42px]" />
-
-        <div className="relative max-w-7xl mx-auto px-8 py-8">
-          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-10">
+    <AppShell
+      title="Training Dashboard"
+      subtitle={`Welcome back, ${
+        user?.name || user?.email || "User"
+      }. Continue building real troubleshooting skill.`}
+      actions={
+        <button
+          type="button"
+          onClick={handleClearProgress}
+          className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/20"
+        >
+          Reset Progress
+        </button>
+      }
+    >
+      <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-stretch mb-10">
+        <div className="2xl:col-span-7 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+          <div className="flex items-start justify-between gap-5 mb-5">
             <div>
-              <p className="text-blue-400 text-sm font-semibold mb-2">
-                Network Troubleshooting Platform
+              <p className="text-slate-400 text-sm mb-2">
+                Overall completion
               </p>
-              <h1 className="text-4xl font-black tracking-tight">
-                Training Dashboard
-              </h1>
-              <p className="text-slate-400 mt-2">
-                Welcome back,{" "}
-                <span className="text-slate-200 font-semibold">
-                  {user?.name || user?.email}
-                </span>
-                . Continue building real troubleshooting skill.
+              <div className="flex items-end gap-3">
+                <p className="text-6xl font-black text-blue-400">
+                  {completionPercent}%
+                </p>
+                <p className="text-slate-400 mb-2">
+                  {completedCount} of {labs.length} labs completed
+                </p>
+              </div>
+            </div>
+
+            <div className="hidden md:block text-right">
+              <p className="text-slate-500 text-sm">Average Score</p>
+              <p className="text-3xl font-bold">{averageScore}</p>
+            </div>
+          </div>
+
+          <div className="h-4 bg-slate-950 border border-slate-800 rounded-full overflow-hidden mb-6">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+              style={{ width: `${completionPercent}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">
+                Completed
+              </p>
+              <p className="text-3xl font-bold text-green-400 mt-2">
+                {completedCount}
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3 text-sm">
-              <span className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2 text-slate-300">
-                CCNA Track
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">
+                In Progress
+              </p>
+              <p className="text-3xl font-bold text-yellow-400 mt-2">
+                {inProgressCount}
+              </p>
+            </div>
+
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">
+                Attempts
+              </p>
+              <p className="text-3xl font-bold text-violet-400 mt-2">
+                {totalAttempts}
+              </p>
+            </div>
+
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wide">
+                Labs
+              </p>
+              <p className="text-3xl font-bold mt-2">{labs.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="2xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <p className="text-slate-400 text-sm mb-1">Recommended Next</p>
+              <h2 className="text-2xl font-bold">
+                {recommendedLab?.title || "Track Complete"}
+              </h2>
+            </div>
+
+            {recommendedLab && (
+              <span
+                className={`border rounded-full px-3 py-1 text-xs uppercase tracking-wide ${getDifficultyStyle(
+                  recommendedLab.difficulty
+                )}`}
+              >
+                {recommendedLab.difficulty}
               </span>
+            )}
+          </div>
 
-              <Link
-                href="/profile"
-                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
-              >
-                Profile
-              </Link>
+          {recommendedLab ? (
+            <>
+              <p className="text-slate-400 mb-5">
+                {activeSessions[recommendedLab.slug] &&
+                !progress[recommendedLab.slug]
+                  ? "You have an active session waiting. Resume where you left off."
+                  : "Start the next unfinished lab in your troubleshooting track."}
+              </p>
 
-              <button
-                type="button"
-                onClick={handleClearProgress}
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl px-4 py-2"
-              >
-                Reset Progress
-              </button>
-
-              <button
-                type="button"
-                onClick={logout}
-                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
-              >
-                Logout
-              </button>
-            </div>
-          </nav>
-
-          <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-            <div className="xl:col-span-7 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
-              <div className="flex items-start justify-between gap-5 mb-5">
-                <div>
-                  <p className="text-slate-400 text-sm mb-2">
-                    Overall completion
-                  </p>
-                  <div className="flex items-end gap-3">
-                    <p className="text-6xl font-black text-blue-400">
-                      {completionPercent}%
-                    </p>
-                    <p className="text-slate-400 mb-2">
-                      {completedCount} of {labs.length} labs completed
-                    </p>
-                  </div>
-                </div>
-
-                <div className="hidden md:block text-right">
-                  <p className="text-slate-500 text-sm">Average Score</p>
-                  <p className="text-3xl font-bold">{averageScore}</p>
-                </div>
-              </div>
-
-              <div className="h-4 bg-slate-950 border border-slate-800 rounded-full overflow-hidden mb-6">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
-                  style={{ width: `${completionPercent}%` }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-slate-500 text-xs uppercase tracking-wide">
-                    Completed
-                  </p>
-                  <p className="text-3xl font-bold text-green-400 mt-2">
-                    {completedCount}
-                  </p>
-                </div>
-
-                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-slate-500 text-xs uppercase tracking-wide">
-                    In Progress
-                  </p>
-                  <p className="text-3xl font-bold text-yellow-400 mt-2">
-                    {inProgressCount}
-                  </p>
-                </div>
-
-                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-slate-500 text-xs uppercase tracking-wide">
-                    Attempts
-                  </p>
-                  <p className="text-3xl font-bold text-violet-400 mt-2">
-                    {totalAttempts}
-                  </p>
-                </div>
-
-                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
-                  <p className="text-slate-500 text-xs uppercase tracking-wide">
-                    Labs
-                  </p>
-                  <p className="text-3xl font-bold mt-2">{labs.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <p className="text-slate-400 text-sm mb-1">
-                    Recommended Next
-                  </p>
-                  <h2 className="text-2xl font-bold">
-                    {recommendedLab?.title || "Track Complete"}
-                  </h2>
-                </div>
-
-                {recommendedLab && (
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 mb-5">
+                <div className="flex items-center justify-between mb-3">
                   <span
-                    className={`border rounded-full px-3 py-1 text-xs uppercase tracking-wide ${getDifficultyStyle(
-                      recommendedLab.difficulty
+                    className={`border rounded-full px-3 py-1 text-xs ${getCategoryStyle(
+                      recommendedLab.category
                     )}`}
                   >
-                    {recommendedLab.difficulty}
+                    {recommendedLab.category}
                   </span>
-                )}
+
+                  <span className="text-slate-500 text-sm">
+                    {recommendedLab.estimatedMinutes} min
+                  </span>
+                </div>
+
+                <div className="h-24 rounded-xl border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.18),transparent_35%)] flex items-center justify-center text-slate-500">
+                  Simulator workspace
+                </div>
               </div>
 
-              {recommendedLab ? (
-                <>
-                  <p className="text-slate-400 mb-5">
-                    {activeSessions[recommendedLab.slug] &&
-                    !progress[recommendedLab.slug]
-                      ? "You have an active session waiting. Resume where you left off."
-                      : "Start the next unfinished lab in your troubleshooting track."}
-                  </p>
-
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 mb-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className={`border rounded-full px-3 py-1 text-xs ${getCategoryStyle(
-                          recommendedLab.category
-                        )}`}
-                      >
-                        {recommendedLab.category}
-                      </span>
-
-                      <span className="text-slate-500 text-sm">
-                        {recommendedLab.estimatedMinutes} min
-                      </span>
-                    </div>
-
-                    <div className="h-24 rounded-xl border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.18),transparent_35%)] flex items-center justify-center text-slate-500">
-                      Simulator workspace
-                    </div>
-                  </div>
-
-                  <Link
-                    href={`/labs/${recommendedLab.slug}`}
-                    className={`block text-center rounded-xl px-5 py-3 font-bold ${
-                      activeSessions[recommendedLab.slug] &&
-                      !progress[recommendedLab.slug]
-                        ? "bg-yellow-600 hover:bg-yellow-500 text-black"
-                        : "bg-blue-600 hover:bg-blue-500"
-                    }`}
-                  >
-                    {activeSessions[recommendedLab.slug] &&
-                    !progress[recommendedLab.slug]
-                      ? "Resume Lab"
-                      : "Start Lab"}
-                  </Link>
-                </>
-              ) : (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 text-green-300">
-                  You completed all available labs. Nice work.
-                </div>
-              )}
+              <Link
+                href={`/labs/${recommendedLab.slug}`}
+                className={`block text-center rounded-xl px-5 py-3 font-bold ${
+                  activeSessions[recommendedLab.slug] &&
+                  !progress[recommendedLab.slug]
+                    ? "bg-yellow-600 hover:bg-yellow-500 text-black"
+                    : "bg-blue-600 hover:bg-blue-500"
+                }`}
+              >
+                {activeSessions[recommendedLab.slug] &&
+                !progress[recommendedLab.slug]
+                  ? "Resume Lab"
+                  : "Start Lab"}
+              </Link>
+            </>
+          ) : (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 text-green-300">
+              You completed all available labs. Nice work.
             </div>
-          </section>
+          )}
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-8 py-10">
+      <section>
         <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mb-8">
           <div>
             <p className="text-blue-400 text-sm font-semibold mb-2">
@@ -523,7 +485,7 @@ export default function DashboardPage() {
         )}
 
         {!loading && !error && (
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <section className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
             {filteredLabs.map((lab) => {
               const labProgress = progress[lab.slug];
               const labAttempts = attempts[lab.slug] || [];
@@ -664,13 +626,13 @@ export default function DashboardPage() {
             })}
 
             {filteredLabs.length === 0 && (
-              <div className="md:col-span-2 xl:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
+              <div className="md:col-span-2 2xl:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
                 No labs match this filter.
               </div>
             )}
           </section>
         )}
       </section>
-    </main>
+    </AppShell>
   );
 }
