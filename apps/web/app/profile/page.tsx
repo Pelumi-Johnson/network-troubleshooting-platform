@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/progressApi";
 import { getActiveLabSessions } from "@/lib/api/labSessionsApi";
 import { useRequireAuth } from "@/lib/auth/useRequireAuth";
+import { getAchievements } from "@/lib/achievements/achievementRules";
 
 type LabSummary = {
   id: string;
@@ -43,18 +44,9 @@ function getLabTitle(labs: LabSummary[], slug: string) {
   return labs.find((lab) => lab.slug === slug)?.title || slug;
 }
 
-function groupProgressByCategory(
-  labs: LabSummary[],
-  progress: LabProgress[]
-) {
+function groupProgressByCategory(labs: LabSummary[], progress: LabProgress[]) {
   const progressSlugs = new Set(progress.map((item) => item.labSlug));
-  const categoryMap: Record<
-    string,
-    {
-      total: number;
-      completed: number;
-    }
-  > = {};
+  const categoryMap: Record<string, { total: number; completed: number }> = {};
 
   for (const lab of labs) {
     if (!categoryMap[lab.category]) {
@@ -115,9 +107,7 @@ export default function ProfilePage() {
         if (cancelled) return;
 
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load profile data."
+          err instanceof Error ? err.message : "Failed to load profile data."
         );
       } finally {
         if (!cancelled) {
@@ -165,6 +155,8 @@ export default function ProfilePage() {
     .slice(0, 8);
 
   const categoryStats = groupProgressByCategory(labs, progress);
+  const achievements = getAchievements({ labs, progress, attempts });
+  const unlockedAchievements = achievements.filter((item) => item.unlocked);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -251,6 +243,52 @@ export default function ProfilePage() {
                 <p className="text-3xl font-bold">{averageScore}</p>
               </div>
             </div>
+
+            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Achievements</h2>
+                  <p className="text-slate-400 text-sm mt-1">
+                    {unlockedAchievements.length}/{achievements.length} unlocked
+                  </p>
+                </div>
+
+                <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 rounded-full px-4 py-2 text-sm font-semibold">
+                  Learning Track
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {achievements.map((achievement) => (
+                  <div
+                    key={achievement.id}
+                    className={`rounded-xl border p-4 ${
+                      achievement.unlocked
+                        ? "bg-green-500/10 border-green-500/30"
+                        : "bg-slate-950 border-slate-800 opacity-60"
+                    }`}
+                  >
+                    <div className="text-3xl mb-3">
+                      {achievement.unlocked ? "🏆" : "🔒"}
+                    </div>
+
+                    <h3
+                      className={`font-bold mb-2 ${
+                        achievement.unlocked
+                          ? "text-green-400"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {achievement.title}
+                    </h3>
+
+                    <p className="text-sm text-slate-400">
+                      {achievement.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
