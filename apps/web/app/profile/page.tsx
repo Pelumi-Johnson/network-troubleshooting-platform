@@ -44,6 +44,21 @@ function getLabTitle(labs: LabSummary[], slug: string) {
   return labs.find((lab) => lab.slug === slug)?.title || slug;
 }
 
+function getCategoryStyle(category: string) {
+  const styles: Record<string, string> = {
+    dns: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    routing: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    switching: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    subnetting: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    "default-gateway": "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  };
+
+  return (
+    styles[category] ||
+    "bg-slate-500/15 text-slate-400 border-slate-500/30"
+  );
+}
+
 function groupProgressByCategory(labs: LabSummary[], progress: LabProgress[]) {
   const progressSlugs = new Set(progress.map((item) => item.labSlug));
   const categoryMap: Record<string, { total: number; completed: number }> = {};
@@ -69,6 +84,24 @@ function groupProgressByCategory(labs: LabSummary[], progress: LabProgress[]) {
     percent:
       stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
   }));
+}
+
+function getInitials(nameOrEmail: string | undefined) {
+  if (!nameOrEmail) return "U";
+
+  const cleaned = nameOrEmail.trim();
+
+  if (cleaned.includes("@")) {
+    return cleaned[0]?.toUpperCase() || "U";
+  }
+
+  const parts = cleaned.split(" ").filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0][0]?.toUpperCase() || "U";
+  }
+
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
 }
 
 export default function ProfilePage() {
@@ -144,6 +177,9 @@ export default function ProfilePage() {
         )
       : 0;
 
+  const bestScore =
+    progress.length > 0 ? Math.max(...progress.map((item) => item.score)) : 0;
+
   const completionPercent =
     totalLabs > 0 ? Math.round((completedCount / totalLabs) * 100) : 0;
 
@@ -157,40 +193,138 @@ export default function ProfilePage() {
   const categoryStats = groupProgressByCategory(labs, progress);
   const achievements = getAchievements({ labs, progress, attempts });
   const unlockedAchievements = achievements.filter((item) => item.unlocked);
+  const lockedAchievements = achievements.filter((item) => !item.unlocked);
+
+  const displayName = user?.name || user?.email || "User";
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="border-b border-slate-800 bg-slate-950/80">
-        <div className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
-          <div>
-            <p className="text-blue-400 text-sm font-semibold mb-1">
-              Network Troubleshooting Platform
-            </p>
-            <h1 className="text-3xl font-bold">Profile</h1>
-            <p className="text-slate-500 text-sm mt-2">
-              Signed in as{" "}
-              <span className="text-slate-300">
-                {user?.name || user?.email}
-              </span>
-            </p>
-          </div>
+    <main className="min-h-screen bg-slate-950 text-white overflow-hidden">
+      <section className="relative border-b border-slate-800">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.13),transparent_30%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.035)_1px,transparent_1px)] bg-[size:42px_42px]" />
 
-          <div className="flex gap-3">
-            <Link
-              href="/dashboard"
-              className="bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-slate-300"
-            >
-              Dashboard
-            </Link>
+        <div className="relative max-w-7xl mx-auto px-8 py-8">
+          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-10">
+            <div>
+              <p className="text-blue-400 text-sm font-semibold mb-2">
+                Network Troubleshooting Platform
+              </p>
+              <h1 className="text-4xl font-black tracking-tight">Profile</h1>
+              <p className="text-slate-400 mt-2">
+                Track your troubleshooting performance, achievements, attempts,
+                and active lab sessions.
+              </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={logout}
-              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg px-4 py-2"
-            >
-              Logout
-            </button>
-          </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link
+                href="/dashboard"
+                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
+              >
+                Dashboard
+              </Link>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl px-4 py-2"
+              >
+                Logout
+              </button>
+            </div>
+          </nav>
+
+          <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+            <div className="xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+              <div className="flex items-center gap-5 mb-6">
+                <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-950/40">
+                  {getInitials(displayName)}
+                </div>
+
+                <div>
+                  <p className="text-slate-400 text-sm">Signed in as</p>
+                  <h2 className="text-2xl font-bold">{displayName}</h2>
+                  <p className="text-slate-500 text-sm mt-1">{user?.email}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <p className="text-slate-500 text-sm">Track Completion</p>
+                    <p className="text-5xl font-black text-blue-400 mt-1">
+                      {completionPercent}%
+                    </p>
+                  </div>
+
+                  <p className="text-slate-400 text-sm">
+                    {completedCount} of {totalLabs} labs
+                  </p>
+                </div>
+
+                <div className="h-4 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="xl:col-span-7 grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Completed
+                </p>
+                <p className="text-4xl font-black text-green-400 mt-3">
+                  {completedCount}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Active
+                </p>
+                <p className="text-4xl font-black text-yellow-400 mt-3">
+                  {activeCount}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Attempts
+                </p>
+                <p className="text-4xl font-black text-violet-400 mt-3">
+                  {totalAttempts}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Avg Score
+                </p>
+                <p className="text-4xl font-black mt-3">{averageScore}</p>
+              </div>
+
+              <div className="col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Best Score
+                </p>
+                <p className="text-4xl font-black text-blue-400 mt-3">
+                  {bestScore}
+                </p>
+              </div>
+
+              <div className="col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">
+                  Achievements
+                </p>
+                <p className="text-4xl font-black text-emerald-400 mt-3">
+                  {unlockedAchievements.length}/{achievements.length}
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -209,76 +343,38 @@ export default function ProfilePage() {
 
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-5 mb-10">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <p className="text-slate-400 text-sm mb-2">Completion</p>
-                <p className="text-3xl font-bold text-blue-400">
-                  {completionPercent}%
-                </p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <p className="text-slate-400 text-sm mb-2">Completed</p>
-                <p className="text-3xl font-bold text-green-400">
-                  {completedCount}
-                </p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <p className="text-slate-400 text-sm mb-2">Active Sessions</p>
-                <p className="text-3xl font-bold text-yellow-400">
-                  {activeCount}
-                </p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <p className="text-slate-400 text-sm mb-2">Attempts</p>
-                <p className="text-3xl font-bold text-purple-400">
-                  {totalAttempts}
-                </p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <p className="text-slate-400 text-sm mb-2">Average Score</p>
-                <p className="text-3xl font-bold">{averageScore}</p>
-              </div>
-            </div>
-
-            <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6">
-              <div className="flex items-center justify-between mb-6">
+            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-6 shadow-xl shadow-black/15">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold">Achievements</h2>
-                  <p className="text-slate-400 text-sm mt-1">
-                    {unlockedAchievements.length}/{achievements.length} unlocked
+                  <p className="text-blue-400 text-sm font-semibold mb-2">
+                    Achievement System
+                  </p>
+                  <h2 className="text-3xl font-black">Badges earned</h2>
+                  <p className="text-slate-400 mt-2">
+                    Unlock badges by completing labs, earning perfect scores,
+                    and practicing across categories.
                   </p>
                 </div>
 
-                <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 rounded-full px-4 py-2 text-sm font-semibold">
-                  Learning Track
-                </span>
+                <div className="bg-blue-500/15 border border-blue-500/30 text-blue-300 rounded-2xl px-5 py-3">
+                  <p className="text-sm text-blue-300">Unlocked</p>
+                  <p className="text-2xl font-black">
+                    {unlockedAchievements.length}/{achievements.length}
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {achievements.map((achievement) => (
+                {unlockedAchievements.map((achievement) => (
                   <div
                     key={achievement.id}
-                    className={`rounded-xl border p-4 ${
-                      achievement.unlocked
-                        ? "bg-green-500/10 border-green-500/30"
-                        : "bg-slate-950 border-slate-800 opacity-60"
-                    }`}
+                    className="rounded-2xl border bg-green-500/10 border-green-500/30 p-5"
                   >
-                    <div className="text-3xl mb-3">
-                      {achievement.unlocked ? "🏆" : "🔒"}
+                    <div className="h-12 w-12 rounded-2xl bg-green-500/15 border border-green-500/30 flex items-center justify-center text-2xl mb-4">
+                      🏆
                     </div>
 
-                    <h3
-                      className={`font-bold mb-2 ${
-                        achievement.unlocked
-                          ? "text-green-400"
-                          : "text-slate-400"
-                      }`}
-                    >
+                    <h3 className="font-bold text-green-400 mb-2">
                       {achievement.title}
                     </h3>
 
@@ -287,31 +383,65 @@ export default function ProfilePage() {
                     </p>
                   </div>
                 ))}
+
+                {lockedAchievements.map((achievement) => (
+                  <div
+                    key={achievement.id}
+                    className="rounded-2xl border bg-slate-950 border-slate-800 p-5 opacity-70"
+                  >
+                    <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl mb-4">
+                      🔒
+                    </div>
+
+                    <h3 className="font-bold text-slate-400 mb-2">
+                      {achievement.title}
+                    </h3>
+
+                    <p className="text-sm text-slate-500">
+                      {achievement.description}
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-1">Progress by Category</h2>
-                <p className="text-slate-400 text-sm mb-6">
-                  Track which troubleshooting areas you are completing.
-                </p>
+              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+                <div className="mb-6">
+                  <p className="text-blue-400 text-sm font-semibold mb-2">
+                    Skill Areas
+                  </p>
+                  <h2 className="text-2xl font-black">
+                    Progress by Category
+                  </h2>
+                  <p className="text-slate-400 text-sm mt-2">
+                    See where your troubleshooting coverage is strongest.
+                  </p>
+                </div>
 
                 <div className="space-y-5">
                   {categoryStats.map((item) => (
-                    <div key={item.category}>
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="capitalize font-semibold">
+                    <div
+                      key={item.category}
+                      className="bg-slate-950 border border-slate-800 rounded-2xl p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span
+                          className={`capitalize text-xs border px-3 py-1 rounded-full ${getCategoryStyle(
+                            item.category
+                          )}`}
+                        >
                           {item.category}
-                        </p>
+                        </span>
+
                         <p className="text-sm text-slate-400">
                           {item.completed}/{item.total}
                         </p>
                       </div>
 
-                      <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-3 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-500 rounded-full"
+                          className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
                           style={{ width: `${item.percent}%` }}
                         />
                       </div>
@@ -326,23 +456,28 @@ export default function ProfilePage() {
                 </div>
               </section>
 
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                <h2 className="text-2xl font-bold mb-1">Active Sessions</h2>
-                <p className="text-slate-400 text-sm mb-6">
-                  Labs currently in progress.
-                </p>
+              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+                <div className="mb-6">
+                  <p className="text-blue-400 text-sm font-semibold mb-2">
+                    Resume Training
+                  </p>
+                  <h2 className="text-2xl font-black">Active Sessions</h2>
+                  <p className="text-slate-400 text-sm mt-2">
+                    Continue labs that are still in progress.
+                  </p>
+                </div>
 
                 <div className="space-y-4">
                   {activeSessions.map((session) => (
                     <div
                       key={session.sessionId}
-                      className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center justify-between"
+                      className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-4"
                     >
                       <div>
-                        <p className="font-semibold">
+                        <p className="font-bold">
                           {getLabTitle(labs, session.labSlug)}
                         </p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-slate-500 mt-1">
                           Score: {session.score} · Hints Used:{" "}
                           {session.hintsUsed}
                         </p>
@@ -350,7 +485,7 @@ export default function ProfilePage() {
 
                       <Link
                         href={`/labs/${session.labSlug}`}
-                        className="bg-yellow-600 hover:bg-yellow-500 text-black px-4 py-2 rounded-lg font-semibold"
+                        className="bg-yellow-600 hover:bg-yellow-500 text-black px-4 py-2 rounded-xl font-semibold"
                       >
                         Resume
                       </Link>
@@ -358,18 +493,32 @@ export default function ProfilePage() {
                   ))}
 
                   {activeSessions.length === 0 && (
-                    <p className="text-slate-500">
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500">
                       You do not have any active lab sessions.
-                    </p>
+                    </div>
                   )}
                 </div>
               </section>
 
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 xl:col-span-2">
-                <h2 className="text-2xl font-bold mb-1">Recent Attempts</h2>
-                <p className="text-slate-400 text-sm mb-6">
-                  Your latest completed lab attempts.
-                </p>
+              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 xl:col-span-2 shadow-xl shadow-black/15">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                  <div>
+                    <p className="text-blue-400 text-sm font-semibold mb-2">
+                      Attempt History
+                    </p>
+                    <h2 className="text-2xl font-black">Recent Attempts</h2>
+                    <p className="text-slate-400 text-sm mt-2">
+                      Your latest completed lab attempts and scores.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/dashboard"
+                    className="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-semibold text-center"
+                  >
+                    Continue Labs
+                  </Link>
+                </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -385,15 +534,17 @@ export default function ProfilePage() {
                       {recentAttempts.map((attempt) => (
                         <tr
                           key={attempt.id}
-                          className="border-b border-slate-800/70"
+                          className="border-b border-slate-800/70 hover:bg-slate-950/60"
                         >
-                          <td className="py-3 pr-4">
+                          <td className="py-4 pr-4 font-semibold">
                             {getLabTitle(labs, attempt.labSlug)}
                           </td>
-                          <td className="py-3 pr-4 text-green-400 font-semibold">
-                            {attempt.score}
+                          <td className="py-4 pr-4">
+                            <span className="bg-green-500/15 border border-green-500/30 text-green-400 px-3 py-1 rounded-full font-semibold">
+                              {attempt.score}
+                            </span>
                           </td>
-                          <td className="py-3 pr-4 text-slate-400">
+                          <td className="py-4 pr-4 text-slate-400">
                             {formatDate(attempt.completedAt)}
                           </td>
                         </tr>
@@ -402,9 +553,9 @@ export default function ProfilePage() {
                   </table>
 
                   {recentAttempts.length === 0 && (
-                    <p className="text-slate-500 mt-5">
+                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500 mt-5">
                       No completed attempts yet.
-                    </p>
+                    </div>
                   )}
                 </div>
               </section>
