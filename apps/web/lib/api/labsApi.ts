@@ -1,6 +1,5 @@
 import { getAuthHeaders } from "@/lib/auth/authStorage";
-
-const API_BASE_URL = "http://localhost:5000/api";
+import { API_BASE_URL } from "@/lib/api/config";
 
 export async function getAllLabs() {
   const response = await fetch(`${API_BASE_URL}/labs`);
