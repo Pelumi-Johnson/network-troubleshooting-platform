@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { labsController } from "../controllers/labsController";
-import { labSessionsController } from "../controllers/labSessionsController";
+import { optionalAuth } from "../middleware/authMiddleware";
 
 const router = Router();
 
+router.use(optionalAuth);
+
 router.get("/", labsController.getAllLabs);
-router.post("/:slug/start", labSessionsController.startSession);
 router.get("/:slug", labsController.getLabBySlug);
+router.post("/:slug/start", labsController.startSession);
 
 export default router;
