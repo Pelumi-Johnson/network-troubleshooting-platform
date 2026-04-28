@@ -2,13 +2,26 @@ import * as bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 import { prisma } from "../db/prisma";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-network-lab-secret";
-
 type AuthUser = {
   id: string;
   email: string;
   name: string | null;
 };
+
+type JwtPayload = {
+  sub: string;
+  email: string;
+};
+
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret) {
+    throw new Error("JWT_SECRET is required. Add it to apps/api/.env");
+  }
+
+  return secret;
+}
 
 function toAuthUser(user: AuthUser): AuthUser {
   return {
@@ -20,12 +33,14 @@ function toAuthUser(user: AuthUser): AuthUser {
 
 class AuthService {
   createToken(user: AuthUser) {
+    const secret = getJwtSecret();
+
     return jwt.sign(
       {
         sub: user.id,
         email: user.email,
       },
-      JWT_SECRET,
+      secret,
       {
         expiresIn: "7d",
       }
@@ -106,10 +121,21 @@ class AuthService {
     return toAuthUser(user);
   }
 
-  verifyToken(token: string) {
-    return jwt.verify(token, JWT_SECRET) as {
-      sub: string;
-      email: string;
+  verifyToken(token: string): JwtPayload {
+    const secret = getJwtSecret();
+    const payload = jwt.verify(token, secret);
+
+    if (
+      typeof payload === "string" ||
+      typeof payload.sub !== "string" ||
+      typeof payload.email !== "string"
+    ) {
+      throw new Error("Invalid token payload");
+    }
+
+    return {
+      sub: payload.sub,
+      email: payload.email,
     };
   }
 }
