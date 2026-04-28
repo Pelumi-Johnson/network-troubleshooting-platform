@@ -57,19 +57,19 @@ type Props = {
 };
 
 const fallbackPositions: Record<string, { x: number; y: number }> = {
-  pc1: { x: 150, y: 95 },
-  pc2: { x: 150, y: 225 },
-  sw1: { x: 360, y: 160 },
-  r1: { x: 560, y: 160 },
+  pc1: { x: 150, y: 120 },
+  pc2: { x: 150, y: 280 },
+  sw1: { x: 360, y: 200 },
+  r1: { x: 560, y: 200 },
 };
 
 const VIEWBOX_WIDTH = 700;
-const VIEWBOX_HEIGHT = 400;
+const VIEWBOX_HEIGHT = 460;
 
-const SAFE_LEFT = 150;
-const SAFE_RIGHT = 550;
-const SAFE_TOP = 110;
-const SAFE_BOTTOM = 290;
+const SAFE_LEFT = 140;
+const SAFE_RIGHT = 560;
+const SAFE_TOP = 130;
+const SAFE_BOTTOM = 330;
 
 function getDeviceAccent(type: DeviceType) {
   if (type === "pc") {
@@ -138,10 +138,41 @@ function DeviceGlyph({ type }: { type: DeviceType }) {
   if (type === "pc") {
     return (
       <svg viewBox="0 0 64 64" className="h-10 w-10">
-        <rect x="10" y="12" width="44" height="30" rx="4" fill="currentColor" opacity="0.2" />
-        <rect x="14" y="16" width="36" height="22" rx="2" fill="currentColor" opacity="0.55" />
-        <rect x="27" y="43" width="10" height="6" fill="currentColor" opacity="0.45" />
-        <rect x="20" y="50" width="24" height="4" rx="2" fill="currentColor" opacity="0.7" />
+        <rect
+          x="10"
+          y="12"
+          width="44"
+          height="30"
+          rx="4"
+          fill="currentColor"
+          opacity="0.2"
+        />
+        <rect
+          x="14"
+          y="16"
+          width="36"
+          height="22"
+          rx="2"
+          fill="currentColor"
+          opacity="0.55"
+        />
+        <rect
+          x="27"
+          y="43"
+          width="10"
+          height="6"
+          fill="currentColor"
+          opacity="0.45"
+        />
+        <rect
+          x="20"
+          y="50"
+          width="24"
+          height="4"
+          rx="2"
+          fill="currentColor"
+          opacity="0.7"
+        />
       </svg>
     );
   }
@@ -149,12 +180,60 @@ function DeviceGlyph({ type }: { type: DeviceType }) {
   if (type === "switch") {
     return (
       <svg viewBox="0 0 64 64" className="h-10 w-10">
-        <rect x="8" y="18" width="48" height="28" rx="5" fill="currentColor" opacity="0.22" />
-        <rect x="14" y="25" width="8" height="5" rx="1" fill="currentColor" opacity="0.75" />
-        <rect x="25" y="25" width="8" height="5" rx="1" fill="currentColor" opacity="0.75" />
-        <rect x="36" y="25" width="8" height="5" rx="1" fill="currentColor" opacity="0.75" />
-        <rect x="14" y="35" width="8" height="5" rx="1" fill="currentColor" opacity="0.55" />
-        <rect x="25" y="35" width="8" height="5" rx="1" fill="currentColor" opacity="0.55" />
+        <rect
+          x="8"
+          y="18"
+          width="48"
+          height="28"
+          rx="5"
+          fill="currentColor"
+          opacity="0.22"
+        />
+        <rect
+          x="14"
+          y="25"
+          width="8"
+          height="5"
+          rx="1"
+          fill="currentColor"
+          opacity="0.75"
+        />
+        <rect
+          x="25"
+          y="25"
+          width="8"
+          height="5"
+          rx="1"
+          fill="currentColor"
+          opacity="0.75"
+        />
+        <rect
+          x="36"
+          y="25"
+          width="8"
+          height="5"
+          rx="1"
+          fill="currentColor"
+          opacity="0.75"
+        />
+        <rect
+          x="14"
+          y="35"
+          width="8"
+          height="5"
+          rx="1"
+          fill="currentColor"
+          opacity="0.55"
+        />
+        <rect
+          x="25"
+          y="35"
+          width="8"
+          height="5"
+          rx="1"
+          fill="currentColor"
+          opacity="0.55"
+        />
         <circle cx="49" cy="37" r="3" fill="currentColor" opacity="0.8" />
       </svg>
     );
@@ -162,7 +241,15 @@ function DeviceGlyph({ type }: { type: DeviceType }) {
 
   return (
     <svg viewBox="0 0 64 64" className="h-10 w-10">
-      <rect x="12" y="18" width="40" height="28" rx="7" fill="currentColor" opacity="0.22" />
+      <rect
+        x="12"
+        y="18"
+        width="40"
+        height="28"
+        rx="7"
+        fill="currentColor"
+        opacity="0.22"
+      />
       <path
         d="M22 32h20M32 22v20M23 23l18 18M41 23L23 41"
         stroke="currentColor"
@@ -188,7 +275,7 @@ function getTopologyDevices(
     id,
     label: id.toUpperCase(),
     type: device.type,
-    position: fallbackPositions[id] || { x: 350, y: 200 },
+    position: fallbackPositions[id] || { x: 350, y: 230 },
   }));
 }
 
@@ -204,10 +291,21 @@ function getTopologyLinks(
 
   const links: TopologyLink[] = [];
 
-  if (devices?.pc1 && devices?.sw1) links.push({ id: "pc1-sw1", from: "pc1", to: "sw1" });
-  if (devices?.pc2 && devices?.sw1) links.push({ id: "pc2-sw1", from: "pc2", to: "sw1" });
-  if (devices?.sw1 && devices?.r1) links.push({ id: "sw1-r1", from: "sw1", to: "r1" });
-  if (devices?.pc1 && devices?.r1 && !devices?.sw1) links.push({ id: "pc1-r1", from: "pc1", to: "r1" });
+  if (devices?.pc1 && devices?.sw1) {
+    links.push({ id: "pc1-sw1", from: "pc1", to: "sw1" });
+  }
+
+  if (devices?.pc2 && devices?.sw1) {
+    links.push({ id: "pc2-sw1", from: "pc2", to: "sw1" });
+  }
+
+  if (devices?.sw1 && devices?.r1) {
+    links.push({ id: "sw1-r1", from: "sw1", to: "r1" });
+  }
+
+  if (devices?.pc1 && devices?.r1 && !devices?.sw1) {
+    links.push({ id: "pc1-r1", from: "pc1", to: "r1" });
+  }
 
   return links;
 }
@@ -289,12 +387,12 @@ export function TopologyPanel({
   const positionMap = scalePositions(topologyDevices);
 
   return (
-    <section className="bg-slate-900 rounded-2xl p-5 border border-slate-800 shadow-xl shadow-black/20">
+    <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl shadow-black/20">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold">Network Topology</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Select a device to open its console.
+            Click a device to control its terminal.
           </p>
         </div>
 
@@ -310,7 +408,7 @@ export function TopologyPanel({
         </div>
       </div>
 
-      <div className="relative h-80 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+      <div className="relative min-h-[560px] rounded-3xl bg-slate-950 border border-slate-800 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(30,64,175,0.14),transparent_38%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.045)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
@@ -412,10 +510,10 @@ export function TopologyPanel({
 
       <div className="mt-4 flex items-center justify-between text-sm text-slate-300">
         <p>
-          Selected:{" "}
+          Active console:{" "}
           <span className="font-bold text-white">{deviceId.toUpperCase()}</span>
         </p>
-        <p className="text-slate-500">Topology is driven by lab definition</p>
+        <p className="text-slate-500">Topology is driven by lab definition.</p>
       </div>
     </section>
   );

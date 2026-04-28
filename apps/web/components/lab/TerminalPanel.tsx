@@ -328,7 +328,7 @@ export function TerminalPanel({
 
   return (
     <section
-      className={`bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl shadow-black/25 ${accent.glow}`}
+      className={`bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl shadow-black/25 ${accent.glow}`}
     >
       <div className="bg-slate-950 border-b border-slate-800 px-5 py-4">
         <div className="flex items-center justify-between gap-4">
@@ -344,7 +344,7 @@ export function TerminalPanel({
             </div>
 
             <p className="text-xs text-slate-500 mt-2">
-              {getDeviceLabel(deviceId, deviceType)} · isolated command history
+              {getDeviceLabel(deviceId, deviceType)}
             </p>
           </div>
 
@@ -371,7 +371,7 @@ export function TerminalPanel({
               Command Shortcuts
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              Optional training aid. Hide them to troubleshoot from memory.
+              Optional. Hide them to troubleshoot from memory.
             </p>
           </div>
 
@@ -380,7 +380,7 @@ export function TerminalPanel({
             onClick={() => setShowShortcuts((prev) => !prev)}
             className="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg text-slate-300"
           >
-            {showShortcuts ? "Hide Shortcuts" : "Show Shortcuts"}
+            {showShortcuts ? "Hide" : "Show"}
           </button>
         </div>
 
@@ -406,7 +406,7 @@ export function TerminalPanel({
 
           {showShortcuts && suggestions.length === 0 && (
             <span className="text-xs text-slate-700">
-              No shortcuts for this device. Type manually in the terminal.
+              No shortcuts for this device. Type manually.
             </span>
           )}
 
@@ -421,7 +421,7 @@ export function TerminalPanel({
       <div className="bg-black">
         <div
           ref={terminalRef}
-          className="h-[470px] overflow-y-auto p-5 font-mono text-sm bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.05),transparent_28%)]"
+          className="h-[560px] overflow-y-auto p-5 font-mono text-sm bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.05),transparent_28%)]"
         >
           {deviceLogs.length === 0 && (
             <div className="text-slate-600">

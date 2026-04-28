@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { InstructionsPanel } from "@/components/lab/InstructionsPanel";
+import { AppShell } from "@/components/layout/AppShell";
 import { TopologyPanel } from "@/components/lab/TopologyPanel";
 import { TerminalPanel } from "@/components/lab/TerminalPanel";
 import { getLabBySlug, startLabSession } from "@/lib/api/labsApi";
@@ -173,6 +172,25 @@ function getDifficultyStyle(difficulty: string | undefined) {
   }
 
   return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+}
+
+function getCategoryStyle(category: string | undefined) {
+  const styles: Record<string, string> = {
+    dns: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    routing: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    switching: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    subnetting: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    "default-gateway": "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  };
+
+  if (!category) {
+    return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+  }
+
+  return (
+    styles[category] ||
+    "bg-slate-500/15 text-slate-400 border-slate-500/30"
+  );
 }
 
 export default function LabPage() {
@@ -428,106 +446,150 @@ export default function LabPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="border-b border-slate-800 bg-slate-950/95">
-        <div className="px-6 py-5">
-          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
-            <div>
-              <div className="flex items-center gap-3 text-sm mb-3">
-                <Link
-                  href="/dashboard"
-                  className="text-slate-400 hover:text-white transition"
-                >
-                  Dashboard
-                </Link>
-                <span className="text-slate-700">/</span>
-                <span className="text-slate-300">Lab Simulator</span>
-              </div>
+    <AppShell
+      title={lab?.title || "Lab Simulator"}
+      subtitle={lab?.scenario.summary || "Troubleshoot the network fault."}
+      actions={
+        <>
+          <span
+            className={`border rounded-2xl px-4 py-3 text-sm font-semibold capitalize ${getStatusStyle(
+              session?.status
+            )}`}
+          >
+            {session?.status || "loading"}
+          </span>
 
-              <h1 className="text-3xl font-black tracking-tight">
-                {lab?.title}
-              </h1>
+          <span
+            className={`border rounded-2xl px-4 py-3 text-sm font-semibold capitalize ${getDifficultyStyle(
+              lab?.difficulty
+            )}`}
+          >
+            {lab?.difficulty || "lab"}
+          </span>
 
-              <p className="text-slate-400 mt-2 max-w-3xl">
-                {lab?.scenario.summary}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
-              <span
-                className={`border rounded-xl px-4 py-2 text-sm font-semibold capitalize ${getStatusStyle(
-                  session?.status
-                )}`}
-              >
-                {session?.status || "loading"}
-              </span>
-
-              <span
-                className={`border rounded-xl px-4 py-2 text-sm font-semibold capitalize ${getDifficultyStyle(
-                  lab?.difficulty
-                )}`}
-              >
-                {lab?.difficulty || "lab"}
-              </span>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">
-                  Score
-                </p>
-                <p className="font-bold text-white">{session?.score ?? 0}</p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">
-                  Hints
-                </p>
-                <p className="font-bold text-white">
-                  {session?.hintsUsed ?? 0}
-                </p>
-              </div>
-            </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              Score
+            </p>
+            <p className="text-sm font-bold text-white">{session?.score ?? 0}</p>
           </div>
-        </div>
-      </section>
+        </>
+      }
+    >
+      <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-start">
+        <section className="2xl:col-span-8">
+          <TopologyPanel
+            deviceId={deviceId}
+            setDeviceId={setDeviceId}
+            devices={session?.state.devices}
+            topology={lab?.topology}
+            getDeviceHealth={getDeviceHealth}
+          />
+        </section>
 
-      <section className="p-6">
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <aside className="xl:col-span-3">
-            <InstructionsPanel
-              lab={lab}
-              session={session}
-              hint={hint}
-              onGetHint={getHint}
-              onRestart={startLab}
-            />
-          </aside>
+        <section className="2xl:col-span-4">
+          <TerminalPanel
+            logs={logs}
+            command={command}
+            setCommand={setCommand}
+            runCommand={runCommand}
+            terminalRef={terminalRef}
+            disabled={session?.status === "completed"}
+            deviceId={deviceId}
+            devices={session?.state.devices}
+            cliContexts={session?.cliContexts}
+            allowedCommands={lab?.interaction?.allowedCommands}
+          />
+        </section>
 
-          <section className="xl:col-span-4">
-            <TopologyPanel
-              deviceId={deviceId}
-              setDeviceId={setDeviceId}
-              devices={session?.state.devices}
-              topology={lab?.topology}
-              getDeviceHealth={getDeviceHealth}
-            />
-          </section>
+        <section className="2xl:col-span-12 grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-8 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-blue-400 text-sm font-semibold mb-2">
+                  Mission Briefing
+                </p>
+                <h2 className="text-2xl font-black">Objective</h2>
+              </div>
 
-          <section className="xl:col-span-5">
-            <TerminalPanel
-              logs={logs}
-              command={command}
-              setCommand={setCommand}
-              runCommand={runCommand}
-              terminalRef={terminalRef}
+              {lab?.category && (
+                <span
+                  className={`border rounded-full px-3 py-1 text-xs ${getCategoryStyle(
+                    lab.category
+                  )}`}
+                >
+                  {lab.category}
+                </span>
+              )}
+            </div>
+
+            <p className="text-slate-300 leading-relaxed mb-6">
+              {lab?.scenario.objective}
+            </p>
+
+            {lab?.scenario.observedBehavior &&
+              lab.scenario.observedBehavior.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+                    Observed symptoms
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {lab.scenario.observedBehavior.map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {session?.status === "completed" && (
+              <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
+                <p className="font-bold">Lab completed</p>
+                <p className="mt-1 text-sm">{lab?.scenario.completionMessage}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="xl:col-span-4 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+            <p className="text-blue-400 text-sm font-semibold mb-2">
+              Assistance
+            </p>
+            <h2 className="text-2xl font-black mb-4">Hint System</h2>
+
+            <p className="text-sm text-slate-400 mb-5">
+              Hints reduce your score. Use them only when you are stuck.
+            </p>
+
+            <button
+              type="button"
+              onClick={getHint}
               disabled={session?.status === "completed"}
-              deviceId={deviceId}
-              devices={session?.state.devices}
-              cliContexts={session?.cliContexts}
-              allowedCommands={lab?.interaction?.allowedCommands}
-            />
-          </section>
-        </div>
+              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 px-4 py-3 font-bold"
+            >
+              Get Hint
+            </button>
+
+            {hint && (
+              <div className="mt-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+                {hint}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={startLab}
+              className="mt-4 w-full rounded-2xl border border-slate-700 bg-slate-950 hover:bg-slate-900 px-4 py-3 font-semibold text-slate-300"
+            >
+              Restart Lab
+            </button>
+          </div>
+        </section>
       </section>
-    </main>
+    </AppShell>
   );
 }
