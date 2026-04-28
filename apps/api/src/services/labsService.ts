@@ -11,7 +11,7 @@ export interface LabSummary {
 }
 
 class LabsService {
-  private labsDirectory = path.join(__dirname, "..", "labs");
+  private labsDirectory = path.join(process.cwd(), "src", "labs");
 
   private getLabFiles() {
     return fs
