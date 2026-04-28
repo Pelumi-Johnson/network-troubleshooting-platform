@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AppShell } from "@/components/layout/AppShell";
 import { getAllLabs } from "@/lib/api/labsApi";
 import {
   getAttempts,
@@ -105,7 +106,7 @@ function getInitials(nameOrEmail: string | undefined) {
 }
 
 export default function ProfilePage() {
-  const { user, checkingAuth, logout } = useRequireAuth();
+  const { user, checkingAuth } = useRequireAuth();
 
   const [labs, setLabs] = useState<LabSummary[]>([]);
   const [progress, setProgress] = useState<LabProgress[]>([]);
@@ -198,44 +199,26 @@ export default function ProfilePage() {
   const displayName = user?.name || user?.email || "User";
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white overflow-hidden">
-      <section className="relative border-b border-slate-800">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.2),transparent_32%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.13),transparent_30%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.035)_1px,transparent_1px)] bg-[size:42px_42px]" />
+    <AppShell
+      title="Profile"
+      subtitle="Track your troubleshooting performance, achievements, attempts, and active lab sessions."
+    >
+      {loading && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
+          Loading profile...
+        </div>
+      )}
 
-        <div className="relative max-w-7xl mx-auto px-8 py-8">
-          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-10">
-            <div>
-              <p className="text-blue-400 text-sm font-semibold mb-2">
-                Network Troubleshooting Platform
-              </p>
-              <h1 className="text-4xl font-black tracking-tight">Profile</h1>
-              <p className="text-slate-400 mt-2">
-                Track your troubleshooting performance, achievements, attempts,
-                and active lab sessions.
-              </p>
-            </div>
+      {!loading && error && (
+        <div className="bg-red-950/40 border border-red-700 rounded-2xl p-8 text-red-300">
+          {error}
+        </div>
+      )}
 
-            <div className="flex flex-wrap gap-3 text-sm">
-              <Link
-                href="/dashboard"
-                className="bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-slate-300"
-              >
-                Dashboard
-              </Link>
-
-              <button
-                type="button"
-                onClick={logout}
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl px-4 py-2"
-              >
-                Logout
-              </button>
-            </div>
-          </nav>
-
-          <section className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-            <div className="xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
+      {!loading && !error && (
+        <>
+          <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-stretch mb-6">
+            <div className="2xl:col-span-5 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl shadow-black/20">
               <div className="flex items-center gap-5 mb-6">
                 <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-2xl font-black shadow-lg shadow-blue-950/40">
                   {getInitials(displayName)}
@@ -271,7 +254,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="xl:col-span-7 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="2xl:col-span-7 grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl shadow-black/15">
                 <p className="text-slate-500 text-xs uppercase tracking-wide">
                   Completed
@@ -325,244 +308,224 @@ export default function ProfilePage() {
               </div>
             </div>
           </section>
-        </div>
-      </section>
 
-      <section className="max-w-7xl mx-auto px-8 py-10">
-        {loading && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-slate-400">
-            Loading profile...
-          </div>
-        )}
-
-        {!loading && error && (
-          <div className="bg-red-950/40 border border-red-700 rounded-2xl p-8 text-red-300">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <>
-            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-6 shadow-xl shadow-black/15">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-6">
-                <div>
-                  <p className="text-blue-400 text-sm font-semibold mb-2">
-                    Achievement System
-                  </p>
-                  <h2 className="text-3xl font-black">Badges earned</h2>
-                  <p className="text-slate-400 mt-2">
-                    Unlock badges by completing labs, earning perfect scores,
-                    and practicing across categories.
-                  </p>
-                </div>
-
-                <div className="bg-blue-500/15 border border-blue-500/30 text-blue-300 rounded-2xl px-5 py-3">
-                  <p className="text-sm text-blue-300">Unlocked</p>
-                  <p className="text-2xl font-black">
-                    {unlockedAchievements.length}/{achievements.length}
-                  </p>
-                </div>
+          <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-6 shadow-xl shadow-black/15">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-6">
+              <div>
+                <p className="text-blue-400 text-sm font-semibold mb-2">
+                  Achievement System
+                </p>
+                <h2 className="text-3xl font-black">Badges earned</h2>
+                <p className="text-slate-400 mt-2">
+                  Unlock badges by completing labs, earning perfect scores, and
+                  practicing across categories.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {unlockedAchievements.map((achievement) => (
+              <div className="bg-blue-500/15 border border-blue-500/30 text-blue-300 rounded-2xl px-5 py-3">
+                <p className="text-sm text-blue-300">Unlocked</p>
+                <p className="text-2xl font-black">
+                  {unlockedAchievements.length}/{achievements.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4">
+              {unlockedAchievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className="rounded-2xl border bg-green-500/10 border-green-500/30 p-5"
+                >
+                  <div className="h-12 w-12 rounded-2xl bg-green-500/15 border border-green-500/30 flex items-center justify-center text-2xl mb-4">
+                    🏆
+                  </div>
+
+                  <h3 className="font-bold text-green-400 mb-2">
+                    {achievement.title}
+                  </h3>
+
+                  <p className="text-sm text-slate-400">
+                    {achievement.description}
+                  </p>
+                </div>
+              ))}
+
+              {lockedAchievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className="rounded-2xl border bg-slate-950 border-slate-800 p-5 opacity-70"
+                >
+                  <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl mb-4">
+                    🔒
+                  </div>
+
+                  <h3 className="font-bold text-slate-400 mb-2">
+                    {achievement.title}
+                  </h3>
+
+                  <p className="text-sm text-slate-500">
+                    {achievement.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+              <div className="mb-6">
+                <p className="text-blue-400 text-sm font-semibold mb-2">
+                  Skill Areas
+                </p>
+                <h2 className="text-2xl font-black">Progress by Category</h2>
+                <p className="text-slate-400 text-sm mt-2">
+                  See where your troubleshooting coverage is strongest.
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                {categoryStats.map((item) => (
                   <div
-                    key={achievement.id}
-                    className="rounded-2xl border bg-green-500/10 border-green-500/30 p-5"
+                    key={item.category}
+                    className="bg-slate-950 border border-slate-800 rounded-2xl p-4"
                   >
-                    <div className="h-12 w-12 rounded-2xl bg-green-500/15 border border-green-500/30 flex items-center justify-center text-2xl mb-4">
-                      🏆
+                    <div className="flex items-center justify-between mb-3">
+                      <span
+                        className={`capitalize text-xs border px-3 py-1 rounded-full ${getCategoryStyle(
+                          item.category
+                        )}`}
+                      >
+                        {item.category}
+                      </span>
+
+                      <p className="text-sm text-slate-400">
+                        {item.completed}/{item.total}
+                      </p>
                     </div>
 
-                    <h3 className="font-bold text-green-400 mb-2">
-                      {achievement.title}
-                    </h3>
-
-                    <p className="text-sm text-slate-400">
-                      {achievement.description}
-                    </p>
+                    <div className="h-3 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+                        style={{ width: `${item.percent}%` }}
+                      />
+                    </div>
                   </div>
                 ))}
 
-                {lockedAchievements.map((achievement) => (
-                  <div
-                    key={achievement.id}
-                    className="rounded-2xl border bg-slate-950 border-slate-800 p-5 opacity-70"
-                  >
-                    <div className="h-12 w-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl mb-4">
-                      🔒
-                    </div>
-
-                    <h3 className="font-bold text-slate-400 mb-2">
-                      {achievement.title}
-                    </h3>
-
-                    <p className="text-sm text-slate-500">
-                      {achievement.description}
-                    </p>
-                  </div>
-                ))}
+                {categoryStats.length === 0 && (
+                  <p className="text-slate-500">
+                    No lab categories available yet.
+                  </p>
+                )}
               </div>
             </section>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
-                <div className="mb-6">
-                  <p className="text-blue-400 text-sm font-semibold mb-2">
-                    Skill Areas
-                  </p>
-                  <h2 className="text-2xl font-black">
-                    Progress by Category
-                  </h2>
-                  <p className="text-slate-400 text-sm mt-2">
-                    See where your troubleshooting coverage is strongest.
-                  </p>
-                </div>
+            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
+              <div className="mb-6">
+                <p className="text-blue-400 text-sm font-semibold mb-2">
+                  Resume Training
+                </p>
+                <h2 className="text-2xl font-black">Active Sessions</h2>
+                <p className="text-slate-400 text-sm mt-2">
+                  Continue labs that are still in progress.
+                </p>
+              </div>
 
-                <div className="space-y-5">
-                  {categoryStats.map((item) => (
-                    <div
-                      key={item.category}
-                      className="bg-slate-950 border border-slate-800 rounded-2xl p-4"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span
-                          className={`capitalize text-xs border px-3 py-1 rounded-full ${getCategoryStyle(
-                            item.category
-                          )}`}
-                        >
-                          {item.category}
-                        </span>
-
-                        <p className="text-sm text-slate-400">
-                          {item.completed}/{item.total}
-                        </p>
-                      </div>
-
-                      <div className="h-3 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
-                          style={{ width: `${item.percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-
-                  {categoryStats.length === 0 && (
-                    <p className="text-slate-500">
-                      No lab categories available yet.
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
-                <div className="mb-6">
-                  <p className="text-blue-400 text-sm font-semibold mb-2">
-                    Resume Training
-                  </p>
-                  <h2 className="text-2xl font-black">Active Sessions</h2>
-                  <p className="text-slate-400 text-sm mt-2">
-                    Continue labs that are still in progress.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  {activeSessions.map((session) => (
-                    <div
-                      key={session.sessionId}
-                      className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <p className="font-bold">
-                          {getLabTitle(labs, session.labSlug)}
-                        </p>
-                        <p className="text-sm text-slate-500 mt-1">
-                          Score: {session.score} · Hints Used:{" "}
-                          {session.hintsUsed}
-                        </p>
-                      </div>
-
-                      <Link
-                        href={`/labs/${session.labSlug}`}
-                        className="bg-yellow-600 hover:bg-yellow-500 text-black px-4 py-2 rounded-xl font-semibold"
-                      >
-                        Resume
-                      </Link>
-                    </div>
-                  ))}
-
-                  {activeSessions.length === 0 && (
-                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500">
-                      You do not have any active lab sessions.
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 xl:col-span-2 shadow-xl shadow-black/15">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                  <div>
-                    <p className="text-blue-400 text-sm font-semibold mb-2">
-                      Attempt History
-                    </p>
-                    <h2 className="text-2xl font-black">Recent Attempts</h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                      Your latest completed lab attempts and scores.
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/dashboard"
-                    className="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-semibold text-center"
+              <div className="space-y-4">
+                {activeSessions.map((session) => (
+                  <div
+                    key={session.sessionId}
+                    className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-4"
                   >
-                    Continue Labs
-                  </Link>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="text-left py-3 pr-4">Lab</th>
-                        <th className="text-left py-3 pr-4">Score</th>
-                        <th className="text-left py-3 pr-4">Completed</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {recentAttempts.map((attempt) => (
-                        <tr
-                          key={attempt.id}
-                          className="border-b border-slate-800/70 hover:bg-slate-950/60"
-                        >
-                          <td className="py-4 pr-4 font-semibold">
-                            {getLabTitle(labs, attempt.labSlug)}
-                          </td>
-                          <td className="py-4 pr-4">
-                            <span className="bg-green-500/15 border border-green-500/30 text-green-400 px-3 py-1 rounded-full font-semibold">
-                              {attempt.score}
-                            </span>
-                          </td>
-                          <td className="py-4 pr-4 text-slate-400">
-                            {formatDate(attempt.completedAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {recentAttempts.length === 0 && (
-                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500 mt-5">
-                      No completed attempts yet.
+                    <div>
+                      <p className="font-bold">
+                        {getLabTitle(labs, session.labSlug)}
+                      </p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Score: {session.score} · Hints Used:{" "}
+                        {session.hintsUsed}
+                      </p>
                     </div>
-                  )}
+
+                    <Link
+                      href={`/labs/${session.labSlug}`}
+                      className="bg-yellow-600 hover:bg-yellow-500 text-black px-4 py-2 rounded-xl font-semibold"
+                    >
+                      Resume
+                    </Link>
+                  </div>
+                ))}
+
+                {activeSessions.length === 0 && (
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500">
+                    You do not have any active lab sessions.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 2xl:col-span-2 shadow-xl shadow-black/15">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-blue-400 text-sm font-semibold mb-2">
+                    Attempt History
+                  </p>
+                  <h2 className="text-2xl font-black">Recent Attempts</h2>
+                  <p className="text-slate-400 text-sm mt-2">
+                    Your latest completed lab attempts and scores.
+                  </p>
                 </div>
-              </section>
-            </div>
-          </>
-        )}
-      </section>
-    </main>
+
+                <Link
+                  href="/dashboard"
+                  className="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-semibold text-center"
+                >
+                  Continue Labs
+                </Link>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400">
+                      <th className="text-left py-3 pr-4">Lab</th>
+                      <th className="text-left py-3 pr-4">Score</th>
+                      <th className="text-left py-3 pr-4">Completed</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {recentAttempts.map((attempt) => (
+                      <tr
+                        key={attempt.id}
+                        className="border-b border-slate-800/70 hover:bg-slate-950/60"
+                      >
+                        <td className="py-4 pr-4 font-semibold">
+                          {getLabTitle(labs, attempt.labSlug)}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <span className="bg-green-500/15 border border-green-500/30 text-green-400 px-3 py-1 rounded-full font-semibold">
+                            {attempt.score}
+                          </span>
+                        </td>
+                        <td className="py-4 pr-4 text-slate-400">
+                          {formatDate(attempt.completedAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {recentAttempts.length === 0 && (
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 text-slate-500 mt-5">
+                    No completed attempts yet.
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+    </AppShell>
   );
 }
