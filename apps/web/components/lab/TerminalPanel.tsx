@@ -28,6 +28,12 @@ type DeviceState = {
       vlan?: string;
     }
   >;
+  ports?: Record<
+    string,
+    {
+      status: "up" | "down";
+    }
+  >;
 };
 
 type CommandLog = {
@@ -57,7 +63,10 @@ const defaultAllowedCommands: Record<DeviceType, string[]> = {
 };
 
 function normalizeCommand(command: string) {
-  return command.replace("{ip}", "192.168.1.1").trim();
+  return command
+    .replace("{ip}", "192.168.1.1")
+    .replace("{domain}", "google.com")
+    .trim();
 }
 
 function isConfigurationCommand(command: string) {
@@ -74,17 +83,6 @@ function isInterfaceCommand(command: string) {
 
 function isInterfaceModeCommand(command: string) {
   return command === "shutdown" || command === "no shutdown";
-}
-
-function isUserOrPrivilegedCommand(command: string) {
-  return (
-    command === "enable" ||
-    command === "exit" ||
-    command.startsWith("show ") ||
-    command === "ipconfig" ||
-    command.startsWith("ping ") ||
-    command.startsWith("set ")
-  );
 }
 
 function getFallbackCommandForDns(device: DeviceState | undefined) {
@@ -116,44 +114,44 @@ function filterCommandsByMode(commands: string[], mode: CliMode | undefined) {
   const currentMode = mode || "user";
 
   if (currentMode === "user") {
-    return commands.filter((command) => {
-      if (command === "enable") return true;
-      if (command.startsWith("show ")) return true;
-      if (command === "ipconfig") return true;
-      if (command.startsWith("ping ")) return true;
-      if (command.startsWith("set ")) return true;
+    return commands.filter((cmd) => {
+      if (cmd === "enable") return true;
+      if (cmd.startsWith("show ")) return true;
+      if (cmd === "ipconfig") return true;
+      if (cmd.startsWith("ping ")) return true;
+      if (cmd.startsWith("set ")) return true;
       return false;
     });
   }
 
   if (currentMode === "privileged") {
-    return commands.filter((command) => {
-      if (isConfigurationCommand(command)) return true;
-      if (command.startsWith("show ")) return true;
-      if (command === "exit") return true;
+    return commands.filter((cmd) => {
+      if (isConfigurationCommand(cmd)) return true;
+      if (cmd.startsWith("show ")) return true;
+      if (cmd === "exit") return true;
       return false;
     });
   }
 
   if (currentMode === "global_config") {
-    return commands.filter((command) => {
-      if (isInterfaceCommand(command)) return true;
-      if (command === "exit") return true;
-      if (command === "end") return true;
+    return commands.filter((cmd) => {
+      if (isInterfaceCommand(cmd)) return true;
+      if (cmd === "exit") return true;
+      if (cmd === "end") return true;
       return false;
     });
   }
 
   if (currentMode === "interface_config") {
-    return commands.filter((command) => {
-      if (isInterfaceModeCommand(command)) return true;
-      if (command === "exit") return true;
-      if (command === "end") return true;
+    return commands.filter((cmd) => {
+      if (isInterfaceModeCommand(cmd)) return true;
+      if (cmd === "exit") return true;
+      if (cmd === "end") return true;
       return false;
     });
   }
 
-  return commands.filter(isUserOrPrivilegedCommand);
+  return commands;
 }
 
 function getSuggestions(
@@ -176,25 +174,12 @@ function getPrompt(
   deviceType: string | undefined,
   cliContext?: CliContext
 ) {
-  if (deviceType === "pc") {
-    return `${deviceId}>`;
-  }
+  if (deviceType === "pc") return `${deviceId}>`;
 
-  if (!cliContext || cliContext.mode === "user") {
-    return `${deviceId}>`;
-  }
-
-  if (cliContext.mode === "privileged") {
-    return `${deviceId}#`;
-  }
-
-  if (cliContext.mode === "global_config") {
-    return `${deviceId}(config)#`;
-  }
-
-  if (cliContext.mode === "interface_config") {
-    return `${deviceId}(config-if)#`;
-  }
+  if (!cliContext || cliContext.mode === "user") return `${deviceId}>`;
+  if (cliContext.mode === "privileged") return `${deviceId}#`;
+  if (cliContext.mode === "global_config") return `${deviceId}(config)#`;
+  if (cliContext.mode === "interface_config") return `${deviceId}(config-if)#`;
 
   return `${deviceId}>`;
 }
@@ -202,9 +187,7 @@ function getPrompt(
 function getTabCompletion(input: string, suggestions: string[]) {
   const trimmedInput = input.trim().toLowerCase();
 
-  if (!trimmedInput) {
-    return "";
-  }
+  if (!trimmedInput) return "";
 
   const matches = suggestions.filter((suggestion) =>
     suggestion.toLowerCase().startsWith(trimmedInput)
@@ -222,6 +205,42 @@ function getDeviceLabel(deviceId: string, deviceType: string | undefined) {
   if (deviceType === "router") return `${deviceId.toUpperCase()} Router CLI`;
   if (deviceType === "switch") return `${deviceId.toUpperCase()} Switch CLI`;
   return `${deviceId.toUpperCase()} Terminal`;
+}
+
+function getDeviceAccent(deviceType: string | undefined) {
+  if (deviceType === "pc") {
+    return {
+      dot: "bg-blue-400",
+      text: "text-blue-300",
+      border: "border-blue-500/30",
+      glow: "shadow-[0_0_28px_rgba(59,130,246,0.12)]",
+    };
+  }
+
+  if (deviceType === "switch") {
+    return {
+      dot: "bg-violet-400",
+      text: "text-violet-300",
+      border: "border-violet-500/30",
+      glow: "shadow-[0_0_28px_rgba(139,92,246,0.12)]",
+    };
+  }
+
+  if (deviceType === "router") {
+    return {
+      dot: "bg-rose-400",
+      text: "text-rose-300",
+      border: "border-rose-500/30",
+      glow: "shadow-[0_0_28px_rgba(244,63,94,0.12)]",
+    };
+  }
+
+  return {
+    dot: "bg-slate-400",
+    text: "text-slate-300",
+    border: "border-slate-700",
+    glow: "",
+  };
 }
 
 export function TerminalPanel({
@@ -242,14 +261,16 @@ export function TerminalPanel({
   const selectedDevice = devices?.[deviceId];
   const deviceType = selectedDevice?.type;
   const cliContext = cliContexts?.[deviceId];
+  const accent = getDeviceAccent(deviceType);
+
   const suggestions = getSuggestions(
     deviceType,
     selectedDevice,
     cliContext,
     allowedCommands
   );
-  const prompt = getPrompt(deviceId, deviceType, cliContext);
 
+  const prompt = getPrompt(deviceId, deviceType, cliContext);
   const deviceLogs = logs.filter((log) => log.deviceId === deviceId);
   const commandHistory = deviceLogs.map((log) => log.command);
 
@@ -306,32 +327,51 @@ export function TerminalPanel({
   }
 
   return (
-    <section className="bg-black rounded-xl border border-slate-800 overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4 bg-slate-950">
-        <div>
-          <h2 className="text-xl font-bold text-white">Terminal</h2>
-          <p className="text-xs text-slate-500 mt-1">
-            {getDeviceLabel(deviceId, deviceType)} — device history is isolated.
-          </p>
-        </div>
+    <section
+      className={`bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl shadow-black/25 ${accent.glow}`}
+    >
+      <div className="bg-slate-950 border-b border-slate-800 px-5 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-red-500" />
+                <span className="h-3 w-3 rounded-full bg-yellow-500" />
+                <span className="h-3 w-3 rounded-full bg-green-500" />
+              </div>
 
-        <div className="text-xs text-slate-500">
-          Selected:{" "}
-          <span className="text-green-400 font-mono">
-            {deviceId.toUpperCase()}
-          </span>
+              <h2 className="text-xl font-bold text-white">CLI Console</h2>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-2">
+              {getDeviceLabel(deviceId, deviceType)} · isolated command history
+            </p>
+          </div>
+
+          <div
+            className={`border ${accent.border} bg-slate-900 rounded-xl px-4 py-2 text-right`}
+          >
+            <div className="flex items-center gap-2 justify-end">
+              <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
+              <span className={`text-xs font-mono ${accent.text}`}>
+                {deviceId.toUpperCase()}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {(deviceType || "device").toUpperCase()}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="px-5 pt-4 pb-3 bg-black border-b border-slate-900">
-        <div className="flex items-center justify-between">
+      <div className="bg-slate-950/70 border-b border-slate-800 px-5 py-4 min-h-[116px]">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
               Command Shortcuts
             </p>
             <p className="text-xs text-slate-600 mt-1">
-              Loaded from this lab&apos;s allowed commands. Hide them to
-              practice from memory.
+              Optional training aid. Hide them to troubleshoot from memory.
             </p>
           </div>
 
@@ -344,83 +384,104 @@ export function TerminalPanel({
           </button>
         </div>
 
-        {showShortcuts && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {suggestions.map((cmd) => (
-              <button
-                key={cmd}
-                type="button"
-                onClick={() => {
-                  setCommand(cmd);
-                  setHistoryIndex(null);
-                }}
-                disabled={disabled}
-                className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-slate-950 disabled:text-slate-700 border border-slate-800 px-3 py-1 rounded"
-              >
-                {cmd}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="mt-3 min-h-[30px] flex flex-wrap gap-2 items-start">
+          {showShortcuts && suggestions.length > 0 && (
+            <>
+              {suggestions.map((cmd) => (
+                <button
+                  key={cmd}
+                  type="button"
+                  onClick={() => {
+                    setCommand(cmd);
+                    setHistoryIndex(null);
+                  }}
+                  disabled={disabled}
+                  className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-slate-950 disabled:text-slate-700 border border-slate-700/70 px-3 py-1.5 rounded-lg text-slate-300 font-mono transition"
+                >
+                  {cmd}
+                </button>
+              ))}
+            </>
+          )}
+
+          {showShortcuts && suggestions.length === 0 && (
+            <span className="text-xs text-slate-700">
+              No shortcuts for this device. Type manually in the terminal.
+            </span>
+          )}
+
+          {!showShortcuts && (
+            <span className="text-xs text-slate-700">
+              Shortcuts hidden. Type commands manually.
+            </span>
+          )}
+        </div>
       </div>
 
-      <div
-        ref={terminalRef}
-        className="h-[460px] overflow-y-auto bg-black p-5 font-mono text-sm"
-      >
-        {deviceLogs.length === 0 && (
-          <div className="text-slate-600">
-            <p>{getDeviceLabel(deviceId, deviceType)}</p>
-            <p>This device has no command history yet.</p>
-            <p className="mt-2">Tips: ↑ ↓ history | Tab autocomplete</p>
-          </div>
-        )}
-
-        {deviceLogs.map((log, i) => (
-          <div key={`${log.deviceId}-${i}`} className="mb-4">
-            <div className="text-green-400">
-              {log.deviceId}&gt; {log.command}
+      <div className="bg-black">
+        <div
+          ref={terminalRef}
+          className="h-[470px] overflow-y-auto p-5 font-mono text-sm bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.05),transparent_28%)]"
+        >
+          {deviceLogs.length === 0 && (
+            <div className="text-slate-600">
+              <p className={accent.text}>{getDeviceLabel(deviceId, deviceType)}</p>
+              <p>This device has no command history yet.</p>
+              <p className="mt-2">Tips: ↑ ↓ history · Tab autocomplete</p>
             </div>
+          )}
 
-            {log.output && (
-              <pre
-                className={`whitespace-pre-wrap mt-1 leading-relaxed ${
-                  log.ok === false ? "text-red-400" : "text-slate-200"
-                }`}
-              >
-                {log.output}
-              </pre>
-            )}
-          </div>
-        ))}
+          {deviceLogs.map((log, index) => (
+            <div key={`${log.deviceId}-${index}`} className="mb-5">
+              <div className="flex items-start gap-2">
+                <span className="text-green-400 shrink-0">
+                  {log.deviceId}&gt;
+                </span>
+                <span className="text-slate-100">{log.command}</span>
+              </div>
 
-        {!disabled && (
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-green-400">{prompt}</span>
-            <input
-              value={command}
-              onChange={(event) => {
-                setCommand(event.target.value);
-                setHistoryIndex(null);
-              }}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              className="flex-1 bg-transparent border-none outline-none text-slate-100 font-mono caret-green-400"
-            />
-          </div>
-        )}
+              {log.output && (
+                <pre
+                  className={`whitespace-pre-wrap mt-2 leading-relaxed border-l-2 pl-3 ${
+                    log.ok === false
+                      ? "text-red-300 border-red-500/40"
+                      : "text-slate-300 border-slate-700"
+                  }`}
+                >
+                  {log.output}
+                </pre>
+              )}
+            </div>
+          ))}
 
-        {disabled && (
-          <div className="text-slate-600 mt-3">
-            Session complete. Start a new session to continue.
-          </div>
-        )}
+          {!disabled && (
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-green-400 shrink-0">{prompt}</span>
+              <input
+                value={command}
+                onChange={(event) => {
+                  setCommand(event.target.value);
+                  setHistoryIndex(null);
+                }}
+                onKeyDown={handleKeyDown}
+                className="flex-1 bg-transparent border-none outline-none text-slate-100 font-mono caret-green-400 placeholder:text-slate-700"
+                placeholder="type a command..."
+              />
+            </div>
+          )}
+
+          {disabled && (
+            <div className="text-slate-600 mt-3">
+              Session complete. Start a new session to continue.
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="border-t border-slate-800 bg-slate-950 px-5 py-3 flex items-center justify-between text-xs text-slate-600">
         <span>Lab-defined shortcuts</span>
         <span>Tab autocomplete</span>
-        <span>↑ ↓ history</span>
+        <span>↑ ↓ command history</span>
       </div>
     </section>
   );
