@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { InstructionsPanel } from "@/components/lab/InstructionsPanel";
@@ -74,6 +75,9 @@ type Lab = {
   id: string;
   slug: string;
   title: string;
+  category?: string;
+  difficulty?: string;
+  estimatedMinutes?: number;
   scenario: {
     summary: string;
     objective: string;
@@ -141,6 +145,34 @@ function isRuleSatisfied(device: DeviceState | undefined, rule: SuccessRule) {
   }
 
   return false;
+}
+
+function getStatusStyle(status: string | undefined) {
+  if (status === "completed") {
+    return "bg-green-500/15 text-green-400 border-green-500/30";
+  }
+
+  if (status === "abandoned") {
+    return "bg-red-500/15 text-red-400 border-red-500/30";
+  }
+
+  return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+}
+
+function getDifficultyStyle(difficulty: string | undefined) {
+  if (difficulty === "easy") {
+    return "bg-green-500/15 text-green-400 border-green-500/30";
+  }
+
+  if (difficulty === "medium") {
+    return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+  }
+
+  if (difficulty === "hard") {
+    return "bg-red-500/15 text-red-400 border-red-500/30";
+  }
+
+  return "bg-slate-500/15 text-slate-400 border-slate-500/30";
 }
 
 export default function LabPage() {
@@ -396,37 +428,106 @@ export default function LabPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <InstructionsPanel
-          lab={lab}
-          session={session}
-          hint={hint}
-          onGetHint={getHint}
-          onRestart={startLab}
-        />
+    <main className="min-h-screen bg-slate-950 text-white">
+      <section className="border-b border-slate-800 bg-slate-950/95">
+        <div className="px-6 py-5">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-3 text-sm mb-3">
+                <Link
+                  href="/dashboard"
+                  className="text-slate-400 hover:text-white transition"
+                >
+                  Dashboard
+                </Link>
+                <span className="text-slate-700">/</span>
+                <span className="text-slate-300">Lab Simulator</span>
+              </div>
 
-        <TopologyPanel
-          deviceId={deviceId}
-          setDeviceId={setDeviceId}
-          devices={session?.state.devices}
-          topology={lab?.topology}
-          getDeviceHealth={getDeviceHealth}
-        />
+              <h1 className="text-3xl font-black tracking-tight">
+                {lab?.title}
+              </h1>
 
-        <TerminalPanel
-          logs={logs}
-          command={command}
-          setCommand={setCommand}
-          runCommand={runCommand}
-          terminalRef={terminalRef}
-          disabled={session?.status === "completed"}
-          deviceId={deviceId}
-          devices={session?.state.devices}
-          cliContexts={session?.cliContexts}
-          allowedCommands={lab?.interaction?.allowedCommands}
-        />
-      </div>
+              <p className="text-slate-400 mt-2 max-w-3xl">
+                {lab?.scenario.summary}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
+              <span
+                className={`border rounded-xl px-4 py-2 text-sm font-semibold capitalize ${getStatusStyle(
+                  session?.status
+                )}`}
+              >
+                {session?.status || "loading"}
+              </span>
+
+              <span
+                className={`border rounded-xl px-4 py-2 text-sm font-semibold capitalize ${getDifficultyStyle(
+                  lab?.difficulty
+                )}`}
+              >
+                {lab?.difficulty || "lab"}
+              </span>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">
+                  Score
+                </p>
+                <p className="font-bold text-white">{session?.score ?? 0}</p>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">
+                  Hints
+                </p>
+                <p className="font-bold text-white">
+                  {session?.hintsUsed ?? 0}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="p-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <aside className="xl:col-span-3">
+            <InstructionsPanel
+              lab={lab}
+              session={session}
+              hint={hint}
+              onGetHint={getHint}
+              onRestart={startLab}
+            />
+          </aside>
+
+          <section className="xl:col-span-4">
+            <TopologyPanel
+              deviceId={deviceId}
+              setDeviceId={setDeviceId}
+              devices={session?.state.devices}
+              topology={lab?.topology}
+              getDeviceHealth={getDeviceHealth}
+            />
+          </section>
+
+          <section className="xl:col-span-5">
+            <TerminalPanel
+              logs={logs}
+              command={command}
+              setCommand={setCommand}
+              runCommand={runCommand}
+              terminalRef={terminalRef}
+              disabled={session?.status === "completed"}
+              deviceId={deviceId}
+              devices={session?.state.devices}
+              cliContexts={session?.cliContexts}
+              allowedCommands={lab?.interaction?.allowedCommands}
+            />
+          </section>
+        </div>
+      </section>
     </main>
   );
 }
