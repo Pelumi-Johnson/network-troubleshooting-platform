@@ -54,6 +54,7 @@ type Props = {
   devices: Record<string, DeviceState> | undefined;
   cliContexts?: Record<string, CliContext>;
   allowedCommands?: Partial<Record<DeviceType, string[]>>;
+  embedded?: boolean;
 };
 
 const defaultAllowedCommands: Record<DeviceType, string[]> = {
@@ -254,6 +255,7 @@ export function TerminalPanel({
   devices,
   cliContexts,
   allowedCommands,
+  embedded = false,
 }: Props) {
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(true);
@@ -328,51 +330,55 @@ export function TerminalPanel({
 
   return (
     <section
-      className={`bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl shadow-black/25 ${accent.glow}`}
+      className={`flex h-full flex-col overflow-hidden ${
+        embedded
+          ? "rounded-none border-0 bg-transparent shadow-none"
+          : `rounded-3xl border border-slate-800 bg-slate-900 shadow-xl shadow-black/25 ${accent.glow}`
+      }`}
     >
-      <div className="bg-slate-950 border-b border-slate-800 px-5 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <span className="h-3 w-3 rounded-full bg-red-500" />
-                <span className="h-3 w-3 rounded-full bg-yellow-500" />
-                <span className="h-3 w-3 rounded-full bg-green-500" />
-              </div>
-
+      {!embedded && (
+        <div className="bg-slate-950 border-b border-slate-800 px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
               <h2 className="text-xl font-bold text-white">CLI Console</h2>
+
+              <p className="text-xs text-slate-500 mt-2">
+                {getDeviceLabel(deviceId, deviceType)}
+              </p>
             </div>
 
-            <p className="text-xs text-slate-500 mt-2">
-              {getDeviceLabel(deviceId, deviceType)}
-            </p>
-          </div>
-
-          <div
-            className={`border ${accent.border} bg-slate-900 rounded-xl px-4 py-2 text-right`}
-          >
-            <div className="flex items-center gap-2 justify-end">
-              <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
-              <span className={`text-xs font-mono ${accent.text}`}>
-                {deviceId.toUpperCase()}
-              </span>
+            <div
+              className={`border ${accent.border} bg-slate-900 rounded-xl px-4 py-2 text-right`}
+            >
+              <div className="flex items-center gap-2 justify-end">
+                <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
+                <span className={`text-xs font-mono ${accent.text}`}>
+                  {deviceId.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {(deviceType || "device").toUpperCase()}
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">
-              {(deviceType || "device").toUpperCase()}
-            </p>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="bg-slate-950/70 border-b border-slate-800 px-5 py-4 min-h-[116px]">
+      <div
+        className={`border-b border-slate-800 bg-slate-950/70 px-5 ${
+          embedded ? "py-3" : "py-4"
+        }`}
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
               Command Shortcuts
             </p>
-            <p className="text-xs text-slate-600 mt-1">
-              Optional. Hide them to troubleshoot from memory.
-            </p>
+            {!embedded && (
+              <p className="text-xs text-slate-600 mt-1">
+                Optional. Hide them to troubleshoot from memory.
+              </p>
+            )}
           </div>
 
           <button
@@ -384,7 +390,7 @@ export function TerminalPanel({
           </button>
         </div>
 
-        <div className="mt-3 min-h-[30px] flex flex-wrap gap-2 items-start">
+        <div className="mt-3 flex min-h-[30px] flex-wrap items-start gap-2">
           {showShortcuts && suggestions.length > 0 && (
             <>
               {suggestions.map((cmd) => (
@@ -418,10 +424,10 @@ export function TerminalPanel({
         </div>
       </div>
 
-      <div className="bg-black">
+      <div className="min-h-0 flex-1 bg-black">
         <div
           ref={terminalRef}
-          className="h-[560px] overflow-y-auto p-5 font-mono text-sm bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.05),transparent_28%)]"
+          className="h-full overflow-y-auto p-5 font-mono text-sm bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.05),transparent_28%)]"
         >
           {deviceLogs.length === 0 && (
             <div className="text-slate-600">
@@ -478,11 +484,13 @@ export function TerminalPanel({
         </div>
       </div>
 
-      <div className="border-t border-slate-800 bg-slate-950 px-5 py-3 flex items-center justify-between text-xs text-slate-600">
-        <span>Lab-defined shortcuts</span>
-        <span>Tab autocomplete</span>
-        <span>↑ ↓ command history</span>
-      </div>
+      {!embedded && (
+        <div className="border-t border-slate-800 bg-slate-950 px-5 py-3 flex items-center justify-between text-xs text-slate-600">
+          <span>Lab-defined shortcuts</span>
+          <span>Tab autocomplete</span>
+          <span>↑ ↓ command history</span>
+        </div>
+      )}
     </section>
   );
 }
