@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { TopologyPanel } from "@/components/lab/TopologyPanel";
-import { TerminalPanel } from "@/components/lab/TerminalPanel";
+import { DeviceWorkspacePanel } from "@/components/lab/DeviceWorkspacePanel";
+import { LearningCoachPanel } from "@/components/lab/LearningCoachPanel";
 import { getLabBySlug, startLabSession } from "@/lib/api/labsApi";
 import {
   executeCommand,
@@ -174,25 +175,6 @@ function getDifficultyStyle(difficulty: string | undefined) {
   return "bg-slate-500/15 text-slate-400 border-slate-500/30";
 }
 
-function getCategoryStyle(category: string | undefined) {
-  const styles: Record<string, string> = {
-    dns: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-    routing: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-    switching: "bg-violet-500/15 text-violet-400 border-violet-500/30",
-    subnetting: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    "default-gateway": "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  };
-
-  if (!category) {
-    return "bg-slate-500/15 text-slate-400 border-slate-500/30";
-  }
-
-  return (
-    styles[category] ||
-    "bg-slate-500/15 text-slate-400 border-slate-500/30"
-  );
-}
-
 export default function LabPage() {
   const { checkingAuth } = useRequireAuth();
 
@@ -343,12 +325,14 @@ export default function LabPage() {
   async function runCommand() {
     if (!session || !command.trim()) return;
 
+    const submittedCommand = command;
+
     if (session.status === "completed") {
       setLogs((prev) => [
         ...prev,
         {
           deviceId,
-          command,
+          command: submittedCommand,
           output: "Lab is already completed. Start a new session.",
           ok: false,
         },
@@ -362,7 +346,7 @@ export default function LabPage() {
         ...prev,
         {
           deviceId,
-          command,
+          command: submittedCommand,
           output: "This session was abandoned. Start a new session.",
           ok: false,
         },
@@ -371,7 +355,6 @@ export default function LabPage() {
       return;
     }
 
-    const submittedCommand = command;
     const result = await executeCommand(
       session.sessionId,
       deviceId,
@@ -393,6 +376,25 @@ export default function LabPage() {
     }
 
     setCommand("");
+  }
+
+  async function runRawCommand(rawCommand: string) {
+    if (!session || !rawCommand.trim()) return;
+
+    const result = await executeCommand(session.sessionId, deviceId, rawCommand);
+    await refreshSession(session.sessionId);
+
+    if (result.ok === false) {
+      setLogs((prev) => [
+        ...prev,
+        {
+          deviceId,
+          command: rawCommand,
+          output: result.output,
+          ok: false,
+        },
+      ]);
+    }
   }
 
   async function getHint() {
@@ -476,8 +478,8 @@ export default function LabPage() {
         </>
       }
     >
-      <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-start">
-        <section className="2xl:col-span-8">
+     <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-stretch">
+        <section className="2xl:col-span-8 h-full">
           <TopologyPanel
             deviceId={deviceId}
             setDeviceId={setDeviceId}
@@ -487,12 +489,13 @@ export default function LabPage() {
           />
         </section>
 
-        <section className="2xl:col-span-4">
-          <TerminalPanel
+       <section className="2xl:col-span-4 h-full">
+          <DeviceWorkspacePanel
             logs={logs}
             command={command}
             setCommand={setCommand}
             runCommand={runCommand}
+            runRawCommand={runRawCommand}
             terminalRef={terminalRef}
             disabled={session?.status === "completed"}
             deviceId={deviceId}
@@ -501,94 +504,91 @@ export default function LabPage() {
             allowedCommands={lab?.interaction?.allowedCommands}
           />
         </section>
+      </section>
 
-        <section className="2xl:col-span-12 grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div className="xl:col-span-8 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div>
-                <p className="text-blue-400 text-sm font-semibold mb-2">
-                  Mission Briefing
-                </p>
-                <h2 className="text-2xl font-black">Objective</h2>
+      <section className="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="xl:col-span-4 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/15 overflow-hidden">
+          <div className="border-b border-slate-800 px-6 py-5">
+            <p className="text-blue-400 text-sm font-semibold mb-2">
+              Mission Briefing
+            </p>
+            <h2 className="text-2xl font-black">Objective & Symptoms</h2>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+                Objective
+              </p>
+              <p className="text-slate-300 leading-relaxed">
+                {lab?.scenario.objective}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+                Observed symptoms
+              </p>
+
+              <div className="space-y-3">
+                {(lab?.scenario.observedBehavior || []).length > 0 ? (
+                  lab?.scenario.observedBehavior?.map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300"
+                    >
+                      {item}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-slate-500 text-sm">
+                    No observed symptoms were provided for this lab.
+                  </p>
+                )}
               </div>
+            </div>
 
-              {lab?.category && (
-                <span
-                  className={`border rounded-full px-3 py-1 text-xs ${getCategoryStyle(
-                    lab.category
-                  )}`}
-                >
-                  {lab.category}
-                </span>
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+                Hint system
+              </p>
+
+              <button
+                type="button"
+                onClick={getHint}
+                disabled={session?.status === "completed"}
+                className="w-full rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 px-4 py-3 font-bold"
+              >
+                Get Hint
+              </button>
+
+              {hint && (
+                <div className="mt-4 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+                  {hint}
+                </div>
               )}
             </div>
 
-            <p className="text-slate-300 leading-relaxed mb-6">
-              {lab?.scenario.objective}
-            </p>
-
-            {lab?.scenario.observedBehavior &&
-              lab.scenario.observedBehavior.length > 0 && (
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
-                    Observed symptoms
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {lab.scenario.observedBehavior.map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300"
-                      >
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
             {session?.status === "completed" && (
-              <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
+              <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
                 <p className="font-bold">Lab completed</p>
                 <p className="mt-1 text-sm">{lab?.scenario.completionMessage}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="xl:col-span-4 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl shadow-black/15">
-            <p className="text-blue-400 text-sm font-semibold mb-2">
-              Assistance
-            </p>
-            <h2 className="text-2xl font-black mb-4">Hint System</h2>
-
-            <p className="text-sm text-slate-400 mb-5">
-              Hints reduce your score. Use them only when you are stuck.
-            </p>
-
-            <button
-              type="button"
-              onClick={getHint}
-              disabled={session?.status === "completed"}
-              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 px-4 py-3 font-bold"
-            >
-              Get Hint
-            </button>
-
-            {hint && (
-              <div className="mt-5 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                {hint}
               </div>
             )}
 
             <button
               type="button"
               onClick={startLab}
-              className="mt-4 w-full rounded-2xl border border-slate-700 bg-slate-950 hover:bg-slate-900 px-4 py-3 font-semibold text-slate-300"
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950 hover:bg-slate-900 px-4 py-3 font-semibold text-slate-300"
             >
               Restart Lab
             </button>
           </div>
-        </section>
+        </div>
+
+        <div className="xl:col-span-8">
+          <LearningCoachPanel category={lab?.category} title={lab?.title} />
+        </div>
       </section>
     </AppShell>
   );

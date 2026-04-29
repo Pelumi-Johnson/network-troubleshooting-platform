@@ -386,7 +386,7 @@ export function TopologyPanel({
   const positionMap = scalePositions(topologyDevices);
 
   return (
-    <section className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl shadow-black/20">
+    <section className="h-full bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl shadow-black/20">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold">Network Topology</h2>
