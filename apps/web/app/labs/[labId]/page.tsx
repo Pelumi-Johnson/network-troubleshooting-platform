@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { TopologyPanel } from "@/components/lab/TopologyPanel";
 import { DeviceWorkspacePanel } from "@/components/lab/DeviceWorkspacePanel";
 import { LearningCoachPanel } from "@/components/lab/LearningCoachPanel";
+import { BrandBackground } from "@/components/ui/BrandSurfaces";
 import { getLabBySlug, startLabSession } from "@/lib/api/labsApi";
 import {
   executeCommand,
@@ -149,30 +150,30 @@ function isRuleSatisfied(device: DeviceState | undefined, rule: SuccessRule) {
 
 function getStatusStyle(status: string | undefined) {
   if (status === "completed") {
-    return "bg-green-500/15 text-green-400 border-green-500/30";
+    return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
   }
 
   if (status === "abandoned") {
-    return "bg-red-500/15 text-red-400 border-red-500/30";
+    return "bg-red-500/15 text-red-300 border-red-500/30";
   }
 
-  return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+  return "bg-yellow-500/15 text-yellow-300 border-yellow-500/30";
 }
 
 function getDifficultyStyle(difficulty: string | undefined) {
   if (difficulty === "easy") {
-    return "bg-green-500/15 text-green-400 border-green-500/30";
+    return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
   }
 
   if (difficulty === "medium") {
-    return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+    return "bg-yellow-500/15 text-yellow-300 border-yellow-500/30";
   }
 
   if (difficulty === "hard") {
-    return "bg-red-500/15 text-red-400 border-red-500/30";
+    return "bg-red-500/15 text-red-300 border-red-500/30";
   }
 
-  return "bg-slate-500/15 text-slate-400 border-slate-500/30";
+  return "bg-white/5 text-zinc-300 border-white/10";
 }
 
 export default function LabPage() {
@@ -322,22 +323,19 @@ export default function LabPage() {
     return updatedSession;
   }
 
-  async function runCommand() {
-    if (!session || !command.trim()) return;
-
-    const submittedCommand = command;
+  async function runRawCommand(rawCommand: string) {
+    if (!session || !rawCommand.trim()) return;
 
     if (session.status === "completed") {
       setLogs((prev) => [
         ...prev,
         {
           deviceId,
-          command: submittedCommand,
+          command: rawCommand,
           output: "Lab is already completed. Start a new session.",
           ok: false,
         },
       ]);
-      setCommand("");
       return;
     }
 
@@ -346,42 +344,16 @@ export default function LabPage() {
         ...prev,
         {
           deviceId,
-          command: submittedCommand,
+          command: rawCommand,
           output: "This session was abandoned. Start a new session.",
           ok: false,
         },
       ]);
-      setCommand("");
       return;
     }
 
-    const result = await executeCommand(
-      session.sessionId,
-      deviceId,
-      submittedCommand
-    );
-
-    await refreshSession(session.sessionId);
-
-    if (result.ok === false) {
-      setLogs((prev) => [
-        ...prev,
-        {
-          deviceId,
-          command: submittedCommand,
-          output: result.output,
-          ok: false,
-        },
-      ]);
-    }
-
-    setCommand("");
-  }
-
-  async function runRawCommand(rawCommand: string) {
-    if (!session || !rawCommand.trim()) return;
-
     const result = await executeCommand(session.sessionId, deviceId, rawCommand);
+
     await refreshSession(session.sessionId);
 
     if (result.ok === false) {
@@ -395,6 +367,14 @@ export default function LabPage() {
         },
       ]);
     }
+  }
+
+  async function runCommand() {
+    if (!command.trim()) return;
+
+    const submittedCommand = command;
+    await runRawCommand(submittedCommand);
+    setCommand("");
   }
 
   async function getHint() {
@@ -433,7 +413,8 @@ export default function LabPage() {
 
   if (checkingAuth) {
     return (
-      <main className="p-8 bg-slate-950 text-white min-h-screen">
+      <main className="min-h-screen bg-black p-8 text-white">
+        <BrandBackground />
         Checking login...
       </main>
     );
@@ -441,7 +422,8 @@ export default function LabPage() {
 
   if (loading) {
     return (
-      <main className="p-8 bg-slate-950 text-white min-h-screen">
+      <main className="min-h-screen bg-black p-8 text-white">
+        <BrandBackground />
         Loading lab...
       </main>
     );
@@ -454,7 +436,7 @@ export default function LabPage() {
       actions={
         <>
           <span
-            className={`border rounded-2xl px-4 py-3 text-sm font-semibold capitalize ${getStatusStyle(
+            className={`rounded-2xl border px-4 py-3 text-sm font-semibold capitalize ${getStatusStyle(
               session?.status
             )}`}
           >
@@ -462,15 +444,15 @@ export default function LabPage() {
           </span>
 
           <span
-            className={`border rounded-2xl px-4 py-3 text-sm font-semibold capitalize ${getDifficultyStyle(
+            className={`rounded-2xl border px-4 py-3 text-sm font-semibold capitalize ${getDifficultyStyle(
               lab?.difficulty
             )}`}
           >
             {lab?.difficulty || "lab"}
           </span>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3 backdrop-blur-xl">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
               Score
             </p>
             <p className="text-sm font-bold text-white">{session?.score ?? 0}</p>
@@ -478,8 +460,10 @@ export default function LabPage() {
         </>
       }
     >
-     <section className="grid grid-cols-1 2xl:grid-cols-12 gap-6 items-stretch">
-        <section className="2xl:col-span-8 h-full">
+      <BrandBackground />
+
+      <section className="grid grid-cols-1 items-stretch gap-6 2xl:grid-cols-12">
+        <section className="h-full 2xl:col-span-8">
           <TopologyPanel
             deviceId={deviceId}
             setDeviceId={setDeviceId}
@@ -489,7 +473,7 @@ export default function LabPage() {
           />
         </section>
 
-       <section className="2xl:col-span-4 h-full">
+        <section className="h-full 2xl:col-span-4">
           <DeviceWorkspacePanel
             logs={logs}
             command={command}
@@ -506,27 +490,27 @@ export default function LabPage() {
         </section>
       </section>
 
-      <section className="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        <div className="xl:col-span-4 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl shadow-black/15 overflow-hidden">
-          <div className="border-b border-slate-800 px-6 py-5">
-            <p className="text-blue-400 text-sm font-semibold mb-2">
+      <section className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-4 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="border-b border-white/10 bg-black/30 px-6 py-5">
+            <p className="mb-2 text-sm font-semibold text-emerald-300">
               Mission Briefing
             </p>
             <h2 className="text-2xl font-black">Objective & Symptoms</h2>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="space-y-6 p-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Objective
               </p>
-              <p className="text-slate-300 leading-relaxed">
+              <p className="leading-relaxed text-zinc-300">
                 {lab?.scenario.objective}
               </p>
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Observed symptoms
               </p>
 
@@ -535,13 +519,13 @@ export default function LabPage() {
                   lab?.scenario.observedBehavior?.map((item) => (
                     <div
                       key={item}
-                      className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300"
+                      className="rounded-2xl border border-white/10 bg-black/35 p-4 text-sm text-zinc-300"
                     >
                       {item}
                     </div>
                   ))
                 ) : (
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-sm text-zinc-500">
                     No observed symptoms were provided for this lab.
                   </p>
                 )}
@@ -549,7 +533,7 @@ export default function LabPage() {
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+              <p className="mb-3 text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Hint system
               </p>
 
@@ -557,7 +541,7 @@ export default function LabPage() {
                 type="button"
                 onClick={getHint}
                 disabled={session?.status === "completed"}
-                className="w-full rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 px-4 py-3 font-bold"
+                className="w-full rounded-2xl bg-emerald-500 px-4 py-3 font-bold text-black transition hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-500"
               >
                 Get Hint
               </button>
@@ -570,7 +554,7 @@ export default function LabPage() {
             </div>
 
             {session?.status === "completed" && (
-              <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300">
                 <p className="font-bold">Lab completed</p>
                 <p className="mt-1 text-sm">{lab?.scenario.completionMessage}</p>
               </div>
@@ -579,7 +563,7 @@ export default function LabPage() {
             <button
               type="button"
               onClick={startLab}
-              className="w-full rounded-2xl border border-slate-700 bg-slate-950 hover:bg-slate-900 px-4 py-3 font-semibold text-slate-300"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 font-semibold text-zinc-300 transition hover:bg-white/[0.08]"
             >
               Restart Lab
             </button>
