@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState } from "react";
 
 const iconPaths = {
@@ -216,20 +217,34 @@ function Icon({
   );
 }
 
+const ACTIVE_LAB_HREF = "/labs/dns-failure";
+const DASHBOARD_HREF = "/dashboard";
+const CHALLENGES_HREF = "/challenges";
+const PROFILE_HREF = "/profile";
+
 const navItems: {
   label: string;
   icon: IconName;
   active?: boolean;
+  href?: string;
+  targetId?: string;
   children?: string[];
+  disabled?: boolean;
 }[] = [
-  { label: "Dashboard", icon: "dashboard", active: true },
-  { label: "Tickets", icon: "warning" },
-  { label: "Labs", icon: "flask", children: ["Easy", "Medium", "Hard"] },
-  { label: "Evidence", icon: "file" },
-  { label: "Training Path", icon: "route" },
-  { label: "Queue", icon: "list" },
-  { label: "Profile", icon: "chart" },
-  { label: "Settings", icon: "settings" },
+  { label: "Dashboard", icon: "dashboard", active: true, href: DASHBOARD_HREF },
+  { label: "Tickets", icon: "warning", targetId: "ticket-queue" },
+  {
+    label: "Labs",
+    icon: "flask",
+    href: ACTIVE_LAB_HREF,
+    children: ["Easy", "Medium", "Hard"],
+  },
+  { label: "Challenges", icon: "terminal", href: CHALLENGES_HREF },
+  { label: "Evidence", icon: "file", targetId: "evidence-snapshot" },
+  { label: "Training Path", icon: "route", targetId: "training-path" },
+  { label: "Queue", icon: "list", targetId: "ticket-queue" },
+  { label: "Profile", icon: "chart", href: PROFILE_HREF },
+  { label: "Settings", icon: "settings", disabled: true },
 ];
 
 const evidence: {
@@ -238,45 +253,19 @@ const evidence: {
   tone: Tone;
   icon: IconName;
 }[] = [
-  {
-    label: "DNS lookup from PC-02",
-    value: "TIMEOUT",
-    tone: "red",
-    icon: "globe",
-  },
-  {
-    label: "Ping 8.8.8.8",
-    value: "PASS",
-    tone: "green",
-    icon: "activity",
-  },
-  {
-    label: "Endpoint DNS server",
-    value: "MISMATCH",
-    tone: "amber",
-    icon: "terminal",
-  },
-  {
-    label: "Gateway reachability",
-    value: "PASS",
-    tone: "green",
-    icon: "router",
-  },
-  {
-    label: "Resolver comparison",
-    value: "PENDING",
-    tone: "amber",
-    icon: "database",
-  },
+  { label: "DNS lookup from PC-02", value: "TIMEOUT", tone: "red", icon: "globe" },
+  { label: "Ping 8.8.8.8", value: "PASS", tone: "green", icon: "activity" },
+  { label: "Endpoint DNS server", value: "MISMATCH", tone: "amber", icon: "terminal" },
+  { label: "Gateway reachability", value: "PASS", tone: "green", icon: "router" },
+  { label: "Resolver comparison", value: "PENDING", tone: "amber", icon: "database" },
 ];
 
-const incidents: [string, string, "Easy" | "Medium" | "Hard", string, string][] =
-  [
-    ["INC-014", "DNS Failure", "Medium", "Active", "12m"],
-    ["INC-011", "No Internet Access", "Easy", "Active", "10m"],
-    ["INC-017", "Switch Port Shutdown", "Medium", "New", "12m"],
-    ["INC-021", "Wrong Subnet Mask", "Medium", "New", "12m"],
-  ];
+const incidents: [string, string, "Easy" | "Medium" | "Hard", string, string][] = [
+  ["INC-014", "DNS Failure", "Medium", "Active", "12m"],
+  ["INC-011", "No Internet Access", "Easy", "Active", "10m"],
+  ["INC-017", "Switch Port Shutdown", "Medium", "New", "12m"],
+  ["INC-021", "Wrong Subnet Mask", "Medium", "New", "12m"],
+];
 
 const domains: {
   label: string;
@@ -296,6 +285,14 @@ const practice: [string, string][] = [
   ["Run DNS lookup from PC-02", "Then"],
   ["Verify gateway path is still clean", "After"],
 ];
+
+function scrollToTarget(targetId: string) {
+  const target = document.getElementById(targetId);
+
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
 
 function StatusValue({
   tone,
@@ -346,45 +343,73 @@ function Sidebar() {
       <Logo />
 
       <nav className="mt-10 space-y-2">
-        {navItems.map(({ label, icon, active, children }) => (
-          <div key={label}>
-            <button
-              type="button"
-              className={`group relative flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all duration-300 ${
-                active
-                  ? "bg-emerald-400/10 text-slate-100 shadow-[inset_0_0_24px_rgba(16,185,129,.08)]"
-                  : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
-              }`}
-            >
-              {active && (
-                <span className="absolute -left-4 top-2 h-9 w-1 rounded-r-full bg-gradient-to-b from-cyan-300 to-emerald-400 shadow-[0_0_20px_rgba(45,212,191,.8)]" />
-              )}
-              <Icon
-                name={icon}
-                className={`h-5 w-5 ${
-                  active
-                    ? "text-emerald-300"
-                    : "text-slate-500 group-hover:text-emerald-300"
-                }`}
-              />
-              <span>{label}</span>
-            </button>
+        {navItems.map(
+          ({ label, icon, active, children, href, targetId, disabled }) => {
+            const sharedClassName = `group relative flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all duration-300 ${
+              active
+                ? "bg-emerald-400/10 text-slate-100 shadow-[inset_0_0_24px_rgba(16,185,129,.08)]"
+                : disabled
+                ? "cursor-not-allowed text-slate-700"
+                : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
+            }`;
 
-            {children && (
-              <div className="ml-12 mt-1 space-y-1">
-                {children.map((child) => (
+            const content = (
+              <>
+                {active && (
+                  <span className="absolute -left-4 top-2 h-9 w-1 rounded-r-full bg-gradient-to-b from-cyan-300 to-emerald-400 shadow-[0_0_20px_rgba(45,212,191,.8)]" />
+                )}
+
+                <Icon
+                  name={icon}
+                  className={`h-5 w-5 ${
+                    active
+                      ? "text-emerald-300"
+                      : disabled
+                      ? "text-slate-700"
+                      : "text-slate-500 group-hover:text-emerald-300"
+                  }`}
+                />
+
+                <span>{label}</span>
+              </>
+            );
+
+            return (
+              <div key={label}>
+                {href && !disabled ? (
+                  <Link href={href} className={sharedClassName}>
+                    {content}
+                  </Link>
+                ) : (
                   <button
-                    key={child}
                     type="button"
-                    className="block rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-white/[0.04] hover:text-emerald-200"
+                    disabled={disabled}
+                    onClick={() => {
+                      if (targetId) scrollToTarget(targetId);
+                    }}
+                    className={sharedClassName}
                   >
-                    {child}
+                    {content}
                   </button>
-                ))}
+                )}
+
+                {children && (
+                  <div className="ml-12 mt-1 space-y-1">
+                    {children.map((child) => (
+                      <Link
+                        key={child}
+                        href={ACTIVE_LAB_HREF}
+                        className="block rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-white/[0.04] hover:text-emerald-200"
+                      >
+                        {child}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          }
+        )}
       </nav>
 
       <button
@@ -442,8 +467,8 @@ function Header() {
           <Icon name="bell" className="h-5 w-5" />
         </button>
 
-        <button
-          type="button"
+        <Link
+          href={PROFILE_HREF}
           className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-950/65 px-3 py-2"
         >
           <div className="grid h-9 w-9 place-items-center rounded-lg border border-fuchsia-400/25 bg-fuchsia-400/10 text-sm">
@@ -454,7 +479,7 @@ function Header() {
             <p className="text-[11px] text-slate-500">Troubleshooting Path</p>
           </div>
           <Icon name="chevronDown" className="h-4 w-4 text-slate-500" />
-        </button>
+        </Link>
       </div>
     </header>
   );
@@ -557,7 +582,10 @@ function ActionBrief() {
 
 function EvidencePanel() {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-slate-950/50 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+    <div
+      id="evidence-snapshot"
+      className="scroll-mt-6 rounded-xl border border-white/[0.08] bg-slate-950/50 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]"
+    >
       <SectionTitle
         title="Evidence Snapshot"
         right={
@@ -675,13 +703,14 @@ function ActiveIncident({
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <button
-            type="button"
+          <Link
+            href={ACTIVE_LAB_HREF}
             onClick={onContinueLab}
             className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 px-4 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_28px_rgba(52,211,153,.22)] transition hover:scale-[1.01]"
           >
             <Icon name="play" className="h-4 w-4 fill-slate-950" /> Continue Lab
-          </button>
+          </Link>
+
           <button
             type="button"
             onClick={onOpenTicket}
@@ -689,6 +718,7 @@ function ActiveIncident({
           >
             <Icon name="plus" className="h-4 w-4" /> Open Ticket
           </button>
+
           <button
             type="button"
             onClick={onReviewClosed}
@@ -696,6 +726,7 @@ function ActiveIncident({
           >
             <Icon name="check" className="h-4 w-4" /> Review Closed
           </button>
+
           <button
             type="button"
             onClick={onResetSession}
@@ -889,7 +920,10 @@ function TodayFocus() {
 
 function TrainingPlan() {
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-slate-950/55 p-5">
+    <section
+      id="training-path"
+      className="scroll-mt-6 rounded-xl border border-white/[0.08] bg-slate-950/55 p-5"
+    >
       <SectionTitle
         icon="layers"
         title="Training Path"
@@ -1006,7 +1040,7 @@ export default function NetworkTroubleshootingDashboard() {
 
   const actions = {
     continueLab: () =>
-      focusArea("active-lab", "Lab opened. Continue from the active checkpoint."),
+      focusArea("active-lab", "Opening lab. Continue from the active checkpoint."),
     openTicket: () =>
       focusArea(
         "ticket-queue",
@@ -1046,9 +1080,19 @@ export default function NetworkTroubleshootingDashboard() {
                   />
                   <span className="truncate">{notice}</span>
                 </span>
-                <span className="hidden shrink-0 text-[11px] uppercase tracking-widest text-emerald-300/80 md:inline">
-                  Command Status
-                </span>
+
+                <div className="hidden shrink-0 items-center gap-3 md:flex">
+                  <Link
+                    href={CHALLENGES_HREF}
+                    className="rounded-full border border-emerald-300/25 bg-black/20 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-emerald-200 hover:bg-emerald-300/10"
+                  >
+                    Challenges
+                  </Link>
+
+                  <span className="text-[11px] uppercase tracking-widest text-emerald-300/80">
+                    Command Status
+                  </span>
+                </div>
               </div>
 
               <ActiveIncident
