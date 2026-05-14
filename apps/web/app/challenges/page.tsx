@@ -1,35 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
-
-const DASHBOARD_HREF = "/dashboard";
-const CHALLENGES_HREF = "/challenges";
-const ACTIVE_LAB_HREF = "/labs/dns-failure";
-const PROFILE_HREF = "/profile";
+import React, { useMemo, useRef, useState } from "react";
+import AppShell from "@/components/layout/AppShell";
 
 type IconName =
-  | "search"
-  | "bell"
-  | "chevronDown"
-  | "dashboard"
-  | "warning"
+  | "play"
   | "flask"
   | "file"
-  | "route"
-  | "list"
-  | "chart"
-  | "settings"
-  | "collapse"
-  | "play"
-  | "check"
-  | "circle"
   | "globe"
   | "terminal"
   | "layers"
-  | "zap"
+  | "check"
+  | "crosshair"
   | "activity"
-  | "crosshair";
+  | "zap"
+  | "chart";
 
 type ChallengeType = {
   id: string;
@@ -45,6 +31,7 @@ type Drill = {
   id: string;
   type: string;
   title: string;
+  slug: string;
   difficulty: "Easy" | "Medium" | "Hard";
   time: string;
   skill: string;
@@ -52,34 +39,7 @@ type Drill = {
 };
 
 const iconPaths: Record<IconName, React.ReactNode> = {
-  search: (
-    <>
-      <circle cx="11" cy="11" r="6" />
-      <path d="M16 16l4 4" />
-    </>
-  ),
-  bell: (
-    <>
-      <path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 2h16l-2-2Z" />
-      <path d="M10 20a2 2 0 0 0 4 0" />
-    </>
-  ),
-  chevronDown: <path d="m6 9 6 6 6-6" />,
-  dashboard: (
-    <>
-      <rect x="4" y="4" width="7" height="7" rx="1" />
-      <rect x="13" y="4" width="7" height="7" rx="1" />
-      <rect x="4" y="13" width="7" height="7" rx="1" />
-      <rect x="13" y="13" width="7" height="7" rx="1" />
-    </>
-  ),
-  warning: (
-    <>
-      <path d="M12 3 22 20H2L12 3Z" />
-      <path d="M12 9v5" />
-      <path d="M12 17h.01" />
-    </>
-  ),
+  play: <path d="M8 5v14l11-7L8 5Z" />,
   flask: (
     <>
       <path d="M9 3h6" />
@@ -95,53 +55,6 @@ const iconPaths: Record<IconName, React.ReactNode> = {
       <path d="M9 17h6" />
     </>
   ),
-  route: (
-    <>
-      <circle cx="6" cy="6" r="2" />
-      <circle cx="18" cy="18" r="2" />
-      <path d="M8 6h5a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h7" />
-    </>
-  ),
-  list: (
-    <>
-      <path d="M8 6h12" />
-      <path d="M8 12h12" />
-      <path d="M8 18h12" />
-      <path d="M4 6h.01" />
-      <path d="M4 12h.01" />
-      <path d="M4 18h.01" />
-    </>
-  ),
-  chart: (
-    <>
-      <path d="M4 20V4" />
-      <path d="M4 20h16" />
-      <path d="M8 16v-5" />
-      <path d="M12 16V8" />
-      <path d="M16 16v-8" />
-    </>
-  ),
-  settings: (
-    <>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2.1 2.1-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V20h-3v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2.1-2.1.1-.1A1.6 1.6 0 0 0 5 15a1.6 1.6 0 0 0-1.5-1H3v-3h.5A1.6 1.6 0 0 0 5 10a1.6 1.6 0 0 0-.3-1.8l-.1-.1L6.7 6l.1.1A1.6 1.6 0 0 0 8.6 6a1.6 1.6 0 0 0 1-1.5V4h3v.5a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2.1 2.1-.1.1A1.6 1.6 0 0 0 19 10a1.6 1.6 0 0 0 1.5 1h.5v3h-.5A1.6 1.6 0 0 0 19.4 15Z" />
-    </>
-  ),
-  collapse: (
-    <>
-      <path d="M4 5h16v14H4z" />
-      <path d="M9 5v14" />
-      <path d="m16 9-3 3 3 3" />
-    </>
-  ),
-  play: <path d="M8 5v14l11-7L8 5Z" />,
-  check: (
-    <>
-      <rect x="4" y="4" width="16" height="16" rx="2" />
-      <path d="m8 12 3 3 5-6" />
-    </>
-  ),
-  circle: <circle cx="12" cy="12" r="7" />,
   globe: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -164,8 +77,12 @@ const iconPaths: Record<IconName, React.ReactNode> = {
       <path d="m3 16 9 5 9-5" />
     </>
   ),
-  zap: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />,
-  activity: <path d="M3 12h4l2-6 4 12 2-6h6" />,
+  check: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="m8 12 3 3 5-6" />
+    </>
+  ),
   crosshair: (
     <>
       <circle cx="12" cy="12" r="7" />
@@ -175,17 +92,18 @@ const iconPaths: Record<IconName, React.ReactNode> = {
       <path d="M17 12h4" />
     </>
   ),
+  activity: <path d="M3 12h4l2-6 4 12 2-6h6" />,
+  zap: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />,
+  chart: (
+    <>
+      <path d="M4 20V4" />
+      <path d="M4 20h16" />
+      <path d="M8 16v-5" />
+      <path d="M12 16V8" />
+      <path d="M16 16v-8" />
+    </>
+  ),
 };
-
-const navItems = [
-  { label: "Dashboard", icon: "dashboard" as IconName, href: DASHBOARD_HREF },
-  { label: "Tickets", icon: "warning" as IconName, href: `${DASHBOARD_HREF}#ticket-queue` },
-  { label: "Challenges", icon: "flask" as IconName, href: CHALLENGES_HREF, active: true },
-  { label: "Evidence", icon: "file" as IconName, href: `${DASHBOARD_HREF}#evidence-snapshot` },
-  { label: "Training Path", icon: "route" as IconName, href: `${DASHBOARD_HREF}#training-path` },
-  { label: "Queue", icon: "list" as IconName, href: `${DASHBOARD_HREF}#ticket-queue` },
-  { label: "Profile", icon: "chart" as IconName, href: PROFILE_HREF },
-];
 
 const challengeTypes: ChallengeType[] = [
   {
@@ -249,6 +167,7 @@ const drills: Drill[] = [
     id: "OSI-014",
     type: "osi",
     title: "Gateway works, names fail",
+    slug: "gateway-works-names-fail",
     difficulty: "Easy",
     time: "4 min",
     skill: "DNS vs gateway reasoning",
@@ -258,15 +177,18 @@ const drills: Drill[] = [
     id: "CMD-021",
     type: "command",
     title: "Which command proves DNS failure?",
+    slug: "which-command-proves-dns-failure",
     difficulty: "Easy",
     time: "3 min",
     skill: "Command selection",
-    prompt: "Ping to 8.8.8.8 works. Choose the command that proves DNS resolution is failing.",
+    prompt:
+      "Ping to 8.8.8.8 works. Choose the command that proves DNS resolution is failing.",
   },
   {
     id: "OUT-017",
     type: "output",
     title: "Decode APIPA address",
+    slug: "decode-apipa-address",
     difficulty: "Easy",
     time: "3 min",
     skill: "Output interpretation",
@@ -276,6 +198,7 @@ const drills: Drill[] = [
     id: "PRT-008",
     type: "ports",
     title: "Service Port Lockpick",
+    slug: "service-port-lockpick",
     difficulty: "Medium",
     time: "5 min",
     skill: "Service ports",
@@ -285,6 +208,7 @@ const drills: Drill[] = [
     id: "VAL-011",
     type: "validation",
     title: "Prove the repair",
+    slug: "prove-the-repair",
     difficulty: "Medium",
     time: "5 min",
     skill: "Repair validation",
@@ -294,6 +218,7 @@ const drills: Drill[] = [
     id: "FDF-032",
     type: "domain",
     title: "DNS, gateway, or ACL?",
+    slug: "dns-gateway-or-acl",
     difficulty: "Hard",
     time: "7 min",
     skill: "Fault isolation",
@@ -334,7 +259,7 @@ function Icon({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {iconPaths[name] || iconPaths.circle}
+      {iconPaths[name]}
     </svg>
   );
 }
@@ -367,125 +292,6 @@ function StatusPill({
   );
 }
 
-function Logo() {
-  return (
-    <Link href={DASHBOARD_HREF} className="flex items-center gap-3">
-      <div className="relative h-10 w-10">
-        <div className="absolute inset-1 rotate-45 rounded-lg border-2 border-emerald-400/90 shadow-[0_0_25px_rgba(52,211,153,.35)]" />
-        <div className="absolute left-1 top-3 h-4 w-7 -rotate-12 rounded-sm bg-emerald-400/80" />
-        <div className="absolute right-1 top-2 h-2 w-2 rounded-full bg-cyan-300" />
-      </div>
-      <div>
-        <h1 className="text-[23px] font-semibold tracking-[0.28em] text-slate-100">NETLABS</h1>
-        <p className="-mt-1 text-[10px] tracking-[0.18em] text-slate-500">
-          TROUBLESHOOTING SIMULATOR
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-function Sidebar() {
-  return (
-    <aside className="relative hidden min-h-screen w-[188px] shrink-0 border-r border-white/[0.06] bg-black/35 px-4 py-5 xl:block">
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-emerald-400/25 to-transparent" />
-      <Logo />
-
-      <nav className="mt-10 space-y-2">
-        {navItems.map(({ label, icon, active, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className={`group relative flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all duration-300 ${
-              active
-                ? "bg-emerald-400/10 text-slate-100 shadow-[inset_0_0_24px_rgba(16,185,129,.08)]"
-                : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
-            }`}
-          >
-            {active ? (
-              <span className="absolute -left-4 top-2 h-9 w-1 rounded-r-full bg-gradient-to-b from-cyan-300 to-emerald-400 shadow-[0_0_20px_rgba(45,212,191,.8)]" />
-            ) : null}
-            <Icon
-              name={icon}
-              className={`h-5 w-5 ${
-                active ? "text-emerald-300" : "text-slate-500 group-hover:text-emerald-300"
-              }`}
-            />
-            <span>{label}</span>
-          </Link>
-        ))}
-
-        <button className="group relative flex w-full cursor-not-allowed items-center gap-4 rounded-xl px-3 py-3 text-sm text-slate-600">
-          <Icon name="settings" className="h-5 w-5" />
-          <span>Settings</span>
-        </button>
-      </nav>
-
-      <Link
-        href={ACTIVE_LAB_HREF}
-        className="absolute bottom-5 left-5 right-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-3 text-sm font-semibold text-emerald-200"
-      >
-        Continue Lab
-      </Link>
-    </aside>
-  );
-}
-
-function Header() {
-  return (
-    <header className="flex h-[78px] items-center justify-between gap-4 border-b border-white/[0.06] px-5 lg:px-7">
-      <div className="xl:hidden">
-        <Logo />
-      </div>
-
-      <div className="hidden w-[390px] items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-950/70 px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)] md:flex xl:ml-20">
-        <Icon name="search" className="h-4 w-4 text-slate-500" />
-        <span className="flex-1 text-sm text-slate-500">Search challenges, commands, ports...</span>
-        <kbd className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[11px] text-slate-500">
-          ⌘K
-        </kbd>
-      </div>
-
-      <div className="ml-auto flex items-center gap-3">
-        <div className="hidden overflow-hidden rounded-xl border border-white/[0.08] bg-slate-950/65 lg:flex">
-          <div className="border-r border-white/[0.06] px-4 py-2">
-            <p className="text-[10px] text-slate-500">Challenge Mode</p>
-            <p className="flex items-center gap-2 text-xs font-medium text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.9)]" />
-              Available
-            </p>
-          </div>
-          <div className="px-4 py-2">
-            <p className="text-[10px] text-slate-500">Daily Drill</p>
-            <p className="flex items-center gap-2 text-xs font-medium text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.9)]" />
-              Ready
-            </p>
-          </div>
-        </div>
-
-        <button className="grid h-11 w-11 place-items-center rounded-xl border border-white/[0.06] bg-slate-950/45 text-slate-300">
-          <Icon name="bell" className="h-5 w-5" />
-        </button>
-
-        <Link
-          href={PROFILE_HREF}
-          className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-slate-950/65 px-3 py-2"
-        >
-          <div className="grid h-9 w-9 place-items-center rounded-lg border border-fuchsia-400/25 bg-fuchsia-400/10 text-sm">
-            TU
-          </div>
-          <div className="hidden text-left md:block">
-            <p className="text-sm font-medium text-slate-200">Test User</p>
-            <p className="text-[11px] text-slate-500">Troubleshooting Path</p>
-          </div>
-          <Icon name="chevronDown" className="h-4 w-4 text-slate-500" />
-        </Link>
-      </div>
-    </header>
-  );
-}
-
 function SectionTitle({
   icon,
   title,
@@ -497,7 +303,7 @@ function SectionTitle({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h3 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.08em] text-emerald-300">
+      <h3 className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.12em] text-emerald-300">
         {icon ? <Icon name={icon} className="h-4 w-4" /> : null}
         {title}
       </h3>
@@ -506,7 +312,7 @@ function SectionTitle({
   );
 }
 
-function StartHere({ setSelectedType }: { setSelectedType: (type: string) => void }) {
+function StartHere({ onBrowseAll }: { onBrowseAll: () => void }) {
   return (
     <section className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-slate-950/45 p-6 shadow-[0_16px_50px_rgba(0,0,0,.35),inset_0_1px_0_rgba(255,255,255,.04)]">
       <div className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_18%_0%,rgba(45,212,191,.16),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(52,211,153,.1),transparent_28%)]" />
@@ -530,7 +336,7 @@ function StartHere({ setSelectedType }: { setSelectedType: (type: string) => voi
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
-              href="/challenges/osi-ladder"
+              href="/challenges/osi-ladder/gateway-works-names-fail"
               className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_28px_rgba(52,211,153,.22)]"
             >
               <Icon name="play" className="h-4 w-4 fill-slate-950" />
@@ -538,8 +344,9 @@ function StartHere({ setSelectedType }: { setSelectedType: (type: string) => voi
             </Link>
 
             <button
-              onClick={() => setSelectedType("all")}
-              className="rounded-lg border border-emerald-400/60 bg-emerald-400/[0.04] px-5 py-3 text-sm font-semibold text-emerald-300"
+              type="button"
+              onClick={onBrowseAll}
+              className="rounded-lg border border-emerald-400/60 bg-emerald-400/[0.04] px-5 py-3 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-400/[0.09]"
             >
               Browse All Challenges
             </button>
@@ -588,11 +395,7 @@ function StartHere({ setSelectedType }: { setSelectedType: (type: string) => voi
   );
 }
 
-function ChallengeTypeSelector({
-  selectedType,
-}: {
-  selectedType: string;
-}) {
+function ChallengeTypeSelector() {
   return (
     <section className="rounded-2xl border border-white/[0.08] bg-slate-950/45 p-4">
       <SectionTitle
@@ -602,42 +405,32 @@ function ChallengeTypeSelector({
       />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {challengeTypes.map((type) => {
-          const active = selectedType === type.id;
+        {challengeTypes.map((type) => (
+          <Link
+            key={type.id}
+            href={`/challenges/${type.slug}`}
+            className="group relative overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.025] p-4 text-left transition hover:border-emerald-300/35 hover:bg-emerald-300/[0.035] hover:shadow-[0_0_24px_rgba(52,211,153,.08)]"
+          >
+            <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-400/0 blur-3xl transition group-hover:bg-emerald-400/10" />
 
-          return (
-            <Link
-              key={type.id}
-              href={`/challenges/${type.slug}`}
-              className={`group relative overflow-hidden rounded-xl border p-4 text-left transition ${
-                active
-                  ? "border-emerald-300/50 bg-emerald-300/[0.08] shadow-[0_0_24px_rgba(52,211,153,.08)]"
-                  : "border-white/[0.09] bg-white/[0.025] hover:border-emerald-300/35 hover:bg-emerald-300/[0.035]"
-              }`}
-            >
-              <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl" />
+            <div className="relative flex items-start justify-between gap-3">
+              <span className="grid h-11 w-11 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
+                <Icon name={type.icon} className="h-5 w-5" />
+              </span>
+              <StatusPill tone="cyan">{type.count} drills</StatusPill>
+            </div>
 
-              <div className="relative flex items-start justify-between gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-lg border border-cyan-300/25 bg-cyan-300/10 text-cyan-200">
-                  <Icon name={type.icon} className="h-5 w-5" />
-                </span>
-                <StatusPill tone="cyan">{type.count} drills</StatusPill>
-              </div>
-
-              <h3 className="relative mt-5 text-base font-semibold text-slate-100">
-                {type.title}
-              </h3>
-
-              <p className="relative mt-2 min-h-[44px] text-xs leading-relaxed text-slate-500">
-                {type.desc}
-              </p>
-
-              <p className="relative mt-3 text-[11px] font-medium text-emerald-300">
-                Best for: {type.bestFor}
-              </p>
-            </Link>
-          );
-        })}
+            <h3 className="relative mt-5 text-base font-semibold text-slate-100">
+              {type.title}
+            </h3>
+            <p className="relative mt-2 min-h-[44px] text-xs leading-relaxed text-slate-500">
+              {type.desc}
+            </p>
+            <p className="relative mt-3 text-[11px] font-medium text-emerald-300">
+              Best for: {type.bestFor}
+            </p>
+          </Link>
+        ))}
       </div>
     </section>
   );
@@ -647,10 +440,12 @@ function DrillList({
   selectedType,
   difficulty,
   setDifficulty,
+  sectionRef,
 }: {
   selectedType: string;
   difficulty: "All" | Drill["difficulty"];
   setDifficulty: (difficulty: "All" | Drill["difficulty"]) => void;
+  sectionRef: React.RefObject<HTMLElement | null>;
 }) {
   const visible = useMemo(
     () =>
@@ -668,7 +463,11 @@ function DrillList({
       : challengeTypes.find((type) => type.id === selectedType)?.title ?? "Challenges";
 
   return (
-    <section className="rounded-2xl border border-white/[0.08] bg-slate-950/45 p-4">
+    <section
+      ref={sectionRef}
+      id="available-drills"
+      className="scroll-mt-6 rounded-2xl border border-white/[0.08] bg-slate-950/45 p-4"
+    >
       <SectionTitle
         title={`Available Drills · ${selectedLabel}`}
         right={<span className="text-[11px] text-slate-500">Step 3</span>}
@@ -678,6 +477,7 @@ function DrillList({
         {(["All", "Easy", "Medium", "Hard"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setDifficulty(tab)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               difficulty === tab
@@ -691,16 +491,16 @@ function DrillList({
       </div>
 
       <div className="space-y-2">
-        {visible.map((drill, index) => {
+        {visible.map((drill) => {
           const category = challengeTypes.find((type) => type.id === drill.type);
-          const href = category ? `/challenges/${category.slug}` : CHALLENGES_HREF;
+          const href = category
+            ? `/challenges/${category.slug}/${drill.slug}`
+            : "/challenges";
 
           return (
             <article
               key={drill.id}
-              className={`grid items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-emerald-300/30 hover:bg-emerald-300/[0.035] lg:grid-cols-[72px_1fr_210px_120px] ${
-                index === 0 ? "ring-1 ring-emerald-300/20" : ""
-              }`}
+              className="grid items-center gap-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 transition hover:border-emerald-300/30 hover:bg-emerald-300/[0.035] hover:shadow-[0_0_20px_rgba(52,211,153,.07)] lg:grid-cols-[72px_1fr_210px_120px]"
             >
               <span className="font-mono text-xs text-slate-500">{drill.id}</span>
 
@@ -719,11 +519,7 @@ function DrillList({
 
               <Link
                 href={href}
-                className={`${
-                  index === 0
-                    ? "bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950"
-                    : "border border-emerald-400/60 bg-emerald-400/[0.04] text-emerald-300"
-                } flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition`}
+                className="flex items-center justify-center gap-2 rounded-lg border border-emerald-400/60 bg-emerald-400/[0.04] px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:bg-gradient-to-r hover:from-emerald-400 hover:to-teal-400 hover:text-slate-950"
               >
                 <Icon name="play" className="h-4 w-4" />
                 Start
@@ -784,41 +580,46 @@ function ReferenceAndProgress() {
 export default function NetworkTroubleshootingChallenges() {
   const [selectedType, setSelectedType] = useState("osi");
   const [difficulty, setDifficulty] = useState<"All" | Drill["difficulty"]>("All");
+  const drillListRef = useRef<HTMLElement | null>(null);
+
+  function browseAllChallenges() {
+    setSelectedType("all");
+    setDifficulty("All");
+
+    requestAnimationFrame(() => {
+      drillListRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
 
   return (
-    <main className="min-h-screen bg-[#02060b] text-slate-200 antialiased">
-      <div className="fixed inset-0 -z-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,.12),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(34,211,238,.09),transparent_24%),linear-gradient(135deg,#02060b_0%,#06111d_48%,#02050a_100%)]" />
-      <div className="fixed inset-0 -z-0 opacity-[0.18] [background-image:linear-gradient(rgba(45,212,191,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(45,212,191,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
-      <div className="fixed inset-x-0 top-0 -z-0 h-32 bg-gradient-to-b from-emerald-400/[0.08] to-transparent" />
-
-      <div className="relative z-10 flex min-h-screen">
-        <Sidebar />
-
-        <div className="min-w-0 flex-1">
-          <Header />
-
-          <div className="mx-auto max-w-[1480px] space-y-4 p-4 lg:p-5">
-            <div className="flex items-center justify-between rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3 text-sm text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
-              <span className="flex items-center gap-2">
-                <Icon name="activity" className="h-4 w-4 text-emerald-300" />
-                Start with the recommended drill, or choose a challenge type to open its dedicated page.
-              </span>
-              <span className="hidden text-[11px] uppercase tracking-widest text-emerald-300/80 md:inline">
-                Challenge Status
-              </span>
-            </div>
-
-            <StartHere setSelectedType={setSelectedType} />
-            <ChallengeTypeSelector selectedType={selectedType} />
-            <DrillList
-              selectedType={selectedType}
-              difficulty={difficulty}
-              setDifficulty={setDifficulty}
-            />
-            <ReferenceAndProgress />
-          </div>
+    <AppShell>
+      <div className="mx-auto max-w-[1480px] space-y-4 p-4 lg:p-5">
+        <div className="flex items-center justify-between rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3 text-sm text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+          <span className="flex items-center gap-2">
+            <Icon name="activity" className="h-4 w-4 text-emerald-300" />
+            Start with the recommended drill, or choose a challenge type to open its dedicated page.
+          </span>
+          <span className="hidden text-[11px] uppercase tracking-widest text-emerald-300/80 md:inline">
+            Challenge Status
+          </span>
         </div>
+
+        <StartHere onBrowseAll={browseAllChallenges} />
+
+        <ChallengeTypeSelector />
+
+        <DrillList
+          selectedType={selectedType}
+          difficulty={difficulty}
+          setDifficulty={setDifficulty}
+          sectionRef={drillListRef}
+        />
+
+        <ReferenceAndProgress />
       </div>
-    </main>
+    </AppShell>
   );
 }
