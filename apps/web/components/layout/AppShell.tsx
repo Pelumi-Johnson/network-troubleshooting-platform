@@ -27,6 +27,7 @@ type IconName =
   | "chevronDown"
   | "drawer";
 
+const LABS_HREF = "/labs";
 const ACTIVE_LAB_HREF = "/labs/dns-failure";
 const DASHBOARD_HREF = "/dashboard";
 const CHALLENGES_HREF = "/challenges";
@@ -143,8 +144,8 @@ const navItems: {
   {
     label: "Labs",
     icon: "flask",
-    href: ACTIVE_LAB_HREF,
-    children: ["Easy", "Medium", "Hard"],
+    href: LABS_HREF,
+    children: ["All Labs", "Easy", "Medium", "Hard"],
   },
   { label: "Challenges", icon: "terminal", href: CHALLENGES_HREF },
   { label: "Evidence", icon: "file", href: `${DASHBOARD_HREF}#evidence-snapshot` },
@@ -184,7 +185,8 @@ function Icon({
 function isActivePath(pathname: string, href?: string) {
   if (!href) return false;
   if (href === DASHBOARD_HREF) return pathname === DASHBOARD_HREF;
-  if (href === ACTIVE_LAB_HREF) return pathname.startsWith("/labs");
+  if (href === LABS_HREF) return pathname === LABS_HREF;
+  if (href === ACTIVE_LAB_HREF) return pathname.startsWith("/labs/");
   if (href === CHALLENGES_HREF) return pathname.startsWith("/challenges");
   if (href === TRAINING_HREF) return pathname.startsWith("/training");
   if (href === PROFILE_HREF) return pathname.startsWith("/profile");
@@ -256,6 +258,14 @@ function subscribeToLabsMenuOpen(onStoreChange: () => void) {
     window.removeEventListener("storage", handleChange);
     window.removeEventListener(LABS_MENU_CHANGE_EVENT, handleChange);
   };
+}
+
+function getLabChildHref(child: string) {
+  if (child === "All Labs") {
+    return LABS_HREF;
+  }
+
+  return `${LABS_HREF}?difficulty=${child.toLowerCase()}`;
 }
 
 export function AppShell({ children, title, subtitle, actions }: AppShellProps) {
@@ -396,7 +406,7 @@ export function AppShell({ children, title, subtitle, actions }: AppShellProps) 
                       {isLabsItem ? (
                         sidebarCollapsed ? (
                           <Link
-                            href={ACTIVE_LAB_HREF}
+                            href={LABS_HREF}
                             className={itemClass}
                             title="Labs"
                           >
@@ -438,14 +448,14 @@ export function AppShell({ children, title, subtitle, actions }: AppShellProps) 
                       {isLabsItem && !sidebarCollapsed ? (
                         <div
                           className={`ml-14 overflow-hidden transition-all duration-300 ease-out ${
-                            labsMenuOpen ? "mt-1 max-h-28 opacity-100" : "max-h-0 opacity-0"
+                            labsMenuOpen ? "mt-1 max-h-32 opacity-100" : "max-h-0 opacity-0"
                           }`}
                         >
                           <div className="space-y-1 pb-1">
                             {children?.map((child) => (
                               <Link
                                 key={child}
-                                href={ACTIVE_LAB_HREF}
+                                href={getLabChildHref(child)}
                                 onClick={() => updateLabsMenuOpen(true)}
                                 className="block px-0 py-1 text-xs font-medium text-slate-500 transition hover:text-emerald-200"
                               >
