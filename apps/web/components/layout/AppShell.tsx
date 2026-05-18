@@ -31,6 +31,7 @@ const LABS_HREF = "/labs";
 const ACTIVE_LAB_HREF = "/labs/dns-failure";
 const DASHBOARD_HREF = "/dashboard";
 const TICKETS_HREF = "/tickets";
+const EVIDENCE_HREF = "/evidence";
 const CHALLENGES_HREF = "/challenges";
 const TRAINING_HREF = "/training";
 const PROFILE_HREF = "/profile";
@@ -149,7 +150,7 @@ const navItems: {
     children: ["All Labs", "Easy", "Medium", "Hard"],
   },
   { label: "Challenges", icon: "terminal", href: CHALLENGES_HREF },
-  { label: "Evidence", icon: "file", href: `${DASHBOARD_HREF}#evidence-snapshot` },
+  { label: "Evidence", icon: "file", href: EVIDENCE_HREF },
   { label: "Training Path", icon: "route", href: TRAINING_HREF },
   { label: "Queue", icon: "list", href: `${DASHBOARD_HREF}#ticket-queue` },
   { label: "Profile", icon: "chart", href: PROFILE_HREF },
@@ -187,6 +188,7 @@ function isActivePath(pathname: string, href?: string) {
   if (!href) return false;
   if (href === DASHBOARD_HREF) return pathname === DASHBOARD_HREF;
   if (href === TICKETS_HREF) return pathname.startsWith("/tickets");
+  if (href === EVIDENCE_HREF) return pathname.startsWith("/evidence");
   if (href === LABS_HREF) return pathname === LABS_HREF;
   if (href === ACTIVE_LAB_HREF) return pathname.startsWith("/labs/");
   if (href === CHALLENGES_HREF) return pathname.startsWith("/challenges");
