@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { TopologyPanel } from "@/components/lab/TopologyPanel";
 import { DeviceWorkspacePanel } from "@/components/lab/DeviceWorkspacePanel";
@@ -117,6 +118,27 @@ type LabSession = {
   cliContexts?: Record<string, CliContext>;
   commandHistory?: CommandLog[];
 };
+
+const ticketContextMap = {
+  "inc-014-dns-failure": {
+    id: "INC-014",
+    title: "DNS Failure — Websites Not Resolving",
+    domain: "DNS",
+    affected: "PC-02",
+    href: "/tickets/inc-014-dns-failure",
+    reminder:
+      "Compare IP reachability against name resolution before changing DNS settings.",
+  },
+  "inc-011-wrong-default-gateway": {
+    id: "INC-011",
+    title: "Wrong Default Gateway",
+    domain: "Gateway",
+    affected: "PC-01",
+    href: "/tickets/inc-011-wrong-default-gateway",
+    reminder:
+      "Verify endpoint IP, subnet mask, and default gateway before testing DNS.",
+  },
+} as const;
 
 function getValueAtPath(source: unknown, path: string): unknown {
   const pathParts = path.split(".");
@@ -264,6 +286,43 @@ function LabNotice({
   );
 }
 
+function TicketContextBanner({
+  ticketContext,
+}: {
+  ticketContext: (typeof ticketContextMap)[keyof typeof ticketContextMap];
+}) {
+  return (
+    <section className="mb-5 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.065] p-4 text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-300">
+            Ticket Investigation Mode
+          </p>
+
+          <h2 className="mt-2 text-lg font-semibold text-slate-100">
+            Investigating {ticketContext.id} · {ticketContext.title}
+          </h2>
+
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Affected: {ticketContext.affected} · Domain: {ticketContext.domain}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-emerald-100/85">
+            {ticketContext.reminder}
+          </p>
+        </div>
+
+        <Link
+          href={ticketContext.href}
+          className="inline-flex items-center justify-center rounded-xl border border-emerald-300/35 bg-black/20 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-300/10"
+        >
+          Back to Case File
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function MissionBriefing({
   lab,
   session,
@@ -365,7 +424,15 @@ export default function LabPage() {
   const { checkingAuth } = useRequireAuth();
 
   const params = useParams();
+  const searchParams = useSearchParams();
+
   const labSlug = String(params.labId);
+  const ticketId = searchParams.get("ticket");
+  const ticketContext =
+    ticketId && ticketId in ticketContextMap
+      ? ticketContextMap[ticketId as keyof typeof ticketContextMap]
+      : null;
+
   const storageKey = `active-session-${labSlug}`;
 
   const [lab, setLab] = useState<Lab | null>(null);
@@ -657,6 +724,8 @@ export default function LabPage() {
       }
     >
       <div className="mx-auto max-w-[1480px] p-4 lg:p-5">
+        {ticketContext ? <TicketContextBanner ticketContext={ticketContext} /> : null}
+
         <section className="grid grid-cols-1 items-stretch gap-6 2xl:grid-cols-12">
           <section className="h-full 2xl:col-span-8">
             <TopologyPanel

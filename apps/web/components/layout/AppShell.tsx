@@ -30,6 +30,7 @@ type IconName =
 const LABS_HREF = "/labs";
 const ACTIVE_LAB_HREF = "/labs/dns-failure";
 const DASHBOARD_HREF = "/dashboard";
+const TICKETS_HREF = "/tickets";
 const CHALLENGES_HREF = "/challenges";
 const TRAINING_HREF = "/training";
 const PROFILE_HREF = "/profile";
@@ -140,7 +141,7 @@ const navItems: {
   disabled?: boolean;
 }[] = [
   { label: "Dashboard", icon: "dashboard", href: DASHBOARD_HREF },
-  { label: "Tickets", icon: "warning", href: `${DASHBOARD_HREF}#ticket-queue` },
+  { label: "Tickets", icon: "warning", href: TICKETS_HREF },
   {
     label: "Labs",
     icon: "flask",
@@ -185,6 +186,7 @@ function Icon({
 function isActivePath(pathname: string, href?: string) {
   if (!href) return false;
   if (href === DASHBOARD_HREF) return pathname === DASHBOARD_HREF;
+  if (href === TICKETS_HREF) return pathname.startsWith("/tickets");
   if (href === LABS_HREF) return pathname === LABS_HREF;
   if (href === ACTIVE_LAB_HREF) return pathname.startsWith("/labs/");
   if (href === CHALLENGES_HREF) return pathname.startsWith("/challenges");
