@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AppShell from "@/components/layout/AppShell";
 
 const categories = {
   "command-combat": {
@@ -12,6 +13,7 @@ const categories = {
     drills: [
       {
         id: "CMD-021",
+        slug: "which-command-proves-dns-failure",
         title: "Which command proves DNS failure?",
         difficulty: "Easy",
         time: "3 min",
@@ -20,6 +22,7 @@ const categories = {
       },
       {
         id: "CMD-044",
+        slug: "check-switch-port-status",
         title: "Check switch port status",
         difficulty: "Easy",
         time: "4 min",
@@ -28,6 +31,7 @@ const categories = {
       },
       {
         id: "CMD-058",
+        slug: "verify-router-interfaces",
         title: "Verify router interfaces",
         difficulty: "Medium",
         time: "5 min",
@@ -47,6 +51,7 @@ const categories = {
     drills: [
       {
         id: "OSI-014",
+        slug: "gateway-works-names-fail",
         title: "Gateway works, names fail",
         difficulty: "Easy",
         time: "4 min",
@@ -55,6 +60,7 @@ const categories = {
       },
       {
         id: "OSI-026",
+        slug: "cable-or-configuration",
         title: "Cable or configuration?",
         difficulty: "Easy",
         time: "3 min",
@@ -63,6 +69,7 @@ const categories = {
       },
       {
         id: "OSI-039",
+        slug: "when-to-move-above-layer-3",
         title: "When to move above Layer 3",
         difficulty: "Medium",
         time: "5 min",
@@ -82,6 +89,7 @@ const categories = {
     drills: [
       {
         id: "PRT-008",
+        slug: "service-port-lockpick",
         title: "Service Port Lockpick",
         difficulty: "Medium",
         time: "5 min",
@@ -90,6 +98,7 @@ const categories = {
       },
       {
         id: "PRT-012",
+        slug: "dns-service-port",
         title: "DNS service port",
         difficulty: "Easy",
         time: "2 min",
@@ -98,6 +107,7 @@ const categories = {
       },
       {
         id: "PRT-020",
+        slug: "dhcp-lease-failure",
         title: "DHCP lease failure",
         difficulty: "Medium",
         time: "4 min",
@@ -117,6 +127,7 @@ const categories = {
     drills: [
       {
         id: "OUT-017",
+        slug: "decode-apipa-address",
         title: "Decode APIPA address",
         difficulty: "Easy",
         time: "3 min",
@@ -125,6 +136,7 @@ const categories = {
       },
       {
         id: "OUT-024",
+        slug: "read-ipconfig-evidence",
         title: "Read ipconfig evidence",
         difficulty: "Easy",
         time: "4 min",
@@ -133,6 +145,7 @@ const categories = {
       },
       {
         id: "OUT-031",
+        slug: "decode-interface-brief",
         title: "Decode interface brief",
         difficulty: "Medium",
         time: "5 min",
@@ -152,6 +165,7 @@ const categories = {
     drills: [
       {
         id: "FDF-032",
+        slug: "dns-gateway-or-acl",
         title: "DNS, gateway, or ACL?",
         difficulty: "Hard",
         time: "7 min",
@@ -160,6 +174,7 @@ const categories = {
       },
       {
         id: "FDF-018",
+        slug: "gateway-or-subnet-mistake",
         title: "Gateway or subnet mistake?",
         difficulty: "Medium",
         time: "5 min",
@@ -168,6 +183,7 @@ const categories = {
       },
       {
         id: "FDF-041",
+        slug: "one-vlan-fails",
         title: "One VLAN fails",
         difficulty: "Hard",
         time: "8 min",
@@ -187,6 +203,7 @@ const categories = {
     drills: [
       {
         id: "VAL-011",
+        slug: "prove-the-repair",
         title: "Prove the repair",
         difficulty: "Medium",
         time: "5 min",
@@ -195,6 +212,7 @@ const categories = {
       },
       {
         id: "VAL-018",
+        slug: "dns-fix-validation",
         title: "DNS fix validation",
         difficulty: "Easy",
         time: "3 min",
@@ -203,6 +221,7 @@ const categories = {
       },
       {
         id: "VAL-025",
+        slug: "gateway-repair-proof",
         title: "Gateway repair proof",
         difficulty: "Medium",
         time: "5 min",
@@ -227,59 +246,61 @@ function getDifficultyTone(difficulty: string) {
   return "border-rose-400/25 bg-rose-400/10 text-rose-300";
 }
 
-export default function ChallengeCategoryPage({
+export default async function ChallengeCategoryPage({
   params,
 }: {
-  params: { category: string };
+  params: Promise<{ category: string }>;
 }) {
-  const category = categories[params.category as CategorySlug];
+  const resolvedParams = await params;
+  const categorySlug = resolvedParams.category;
+  const category = categories[categorySlug as CategorySlug];
 
   if (!category) {
     return (
-      <main className="min-h-screen bg-[#02060b] px-5 py-10 text-slate-200">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-white/[0.04] p-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-300">
-            Challenge not found
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold text-white">
-            This challenge category does not exist.
-          </h1>
-          <Link
-            href="/challenges"
-            className="mt-6 inline-flex rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-200"
-          >
-            Back to challenges
-          </Link>
+      <AppShell>
+        <div className="mx-auto max-w-[1480px] p-4 lg:p-5">
+          <div className="max-w-3xl rounded-3xl border border-white/10 bg-slate-950/50 p-8 shadow-[0_24px_90px_rgba(0,0,0,.45)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rose-300">
+              Challenge not found
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold text-white">
+              This challenge category does not exist.
+            </h1>
+            <Link
+              href="/challenges"
+              className="mt-6 inline-flex rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-200"
+            >
+              Back to challenges
+            </Link>
+          </div>
         </div>
-      </main>
+      </AppShell>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#02060b] text-slate-200">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,.13),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(34,211,238,.09),transparent_26%),linear-gradient(135deg,#02060b_0%,#06111d_48%,#02050a_100%)]" />
-      <div className="pointer-events-none fixed inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(45,212,191,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(45,212,191,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
-
-      <div className="relative z-10 mx-auto max-w-[1240px] px-4 py-6 lg:px-6 lg:py-8">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <AppShell>
+      <div className="mx-auto max-w-[1480px] space-y-5 p-4 lg:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3 text-sm text-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
           <Link
             href="/challenges"
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-emerald-400/35 hover:text-emerald-200"
+            className="font-semibold text-emerald-200 transition hover:text-white"
           >
             ← Back to all challenges
           </Link>
 
-          <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+          <span className="hidden text-[11px] uppercase tracking-widest text-emerald-300/80 md:inline">
             Category Page
-          </div>
+          </span>
         </div>
 
-        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/50 p-6 shadow-[0_24px_90px_rgba(0,0,0,.45)] lg:p-8">
+        <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/50 p-6 shadow-[0_24px_90px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.04)] lg:p-8">
           <div
             className={`absolute -right-16 -top-16 h-56 w-56 rounded-full bg-gradient-to-br ${category.accent} opacity-20 blur-3xl`}
           />
+          <div className="absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(45,212,191,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(45,212,191,.16)_1px,transparent_1px)] [background-size:38px_38px]" />
 
-          <div className="relative grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="relative grid gap-6 lg:grid-cols-[1fr_340px]">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
                 {category.eyebrow}
@@ -314,14 +335,14 @@ export default function ChallengeCategoryPage({
                 Training Objective
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-300">
-                Complete the first drill, read the evidence, then choose the command or conclusion
-                that proves the fault.
+                Complete the first drill, read the evidence, then choose the
+                command or conclusion that proves the fault.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-5 rounded-3xl border border-white/10 bg-slate-950/45 p-5">
+        <section className="rounded-3xl border border-white/10 bg-slate-950/45 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
@@ -333,7 +354,7 @@ export default function ChallengeCategoryPage({
             </div>
 
             <span className="text-xs text-slate-500">
-              Drill detail pages come next
+              Drill detail pages enabled
             </span>
           </div>
 
@@ -341,7 +362,9 @@ export default function ChallengeCategoryPage({
             {category.drills.map((drill, index) => (
               <article
                 key={drill.id}
-                className="grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.045] lg:grid-cols-[92px_1fr_230px_130px] lg:items-center"
+                className={`grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-emerald-400/30 hover:bg-emerald-400/[0.045] lg:grid-cols-[92px_1fr_230px_130px] lg:items-center ${
+                  index === 0 ? "ring-1 ring-emerald-300/20" : ""
+                }`}
               >
                 <span className="font-mono text-xs text-slate-500">
                   {drill.id}
@@ -369,20 +392,21 @@ export default function ChallengeCategoryPage({
                   </span>
                 </div>
 
-                <button
+                <Link
+                  href={`/challenges/${categorySlug}/${drill.slug}`}
                   className={`${
                     index === 0
                       ? "bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950"
                       : "border border-emerald-400/50 bg-emerald-400/[0.06] text-emerald-200"
-                  } rounded-xl px-4 py-3 text-sm font-semibold`}
+                  } rounded-xl px-4 py-3 text-center text-sm font-semibold transition hover:scale-[1.01]`}
                 >
                   Start
-                </button>
+                </Link>
               </article>
             ))}
           </div>
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
