@@ -119,6 +119,23 @@ type LabSession = {
   commandHistory?: CommandLog[];
 };
 
+type EvidenceRecord = {
+  id: string;
+  ticketId: string | null;
+  ticketLabel: string;
+  ticketTitle: string;
+  labSlug: string;
+  labTitle: string;
+  sessionId: string;
+  deviceId: string;
+  command: string;
+  output: string;
+  result: "PASS" | "FAIL" | "INFO";
+  createdAt: string;
+};
+
+const EVIDENCE_STORAGE_KEY = "netlabs-evidence-records";
+
 const ticketContextMap = {
   "inc-014-dns-failure": {
     id: "INC-014",
@@ -204,6 +221,43 @@ function getLogsFromSession(sessionData: LabSession): CommandLog[] {
     output: log.output,
     ok: log.ok,
   }));
+}
+
+function createEvidenceId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `evd-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getEvidenceResult(log: CommandLog): EvidenceRecord["result"] {
+  if (log.ok === true) return "PASS";
+  if (log.ok === false) return "FAIL";
+  return "INFO";
+}
+
+function getEvidenceSignature(log: CommandLog) {
+  return `${log.deviceId}:${log.command}:${log.output}`;
+}
+
+function readEvidenceRecords(): EvidenceRecord[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const rawRecords = window.localStorage.getItem(EVIDENCE_STORAGE_KEY);
+    if (!rawRecords) return [];
+
+    const parsedRecords = JSON.parse(rawRecords);
+    return Array.isArray(parsedRecords) ? parsedRecords : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeEvidenceRecords(records: EvidenceRecord[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(EVIDENCE_STORAGE_KEY, JSON.stringify(records));
 }
 
 function LoadingState({ message }: { message: string }) {
@@ -296,7 +350,7 @@ function TicketContextBanner({
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-300">
-            Ticket Investigation Mode
+            Active Case
           </p>
 
           <h2 className="mt-2 text-lg font-semibold text-slate-100">
@@ -420,6 +474,108 @@ function MissionBriefing({
   );
 }
 
+function EvidenceCapturePanel({
+  logs,
+  savedSignatures,
+  saveCommandAsEvidence,
+}: {
+  logs: CommandLog[];
+  savedSignatures: Record<string, boolean>;
+  saveCommandAsEvidence: (log: CommandLog) => void;
+}) {
+  const recentLogs = logs
+    .filter((log) => log.command.trim() && log.output.trim())
+    .slice(-5)
+    .reverse();
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="flex flex-col justify-between gap-3 border-b border-white/10 bg-black/30 px-6 py-5 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-2 text-sm font-semibold text-cyan-300">
+            Evidence Capture
+          </p>
+          <h2 className="text-2xl font-black text-white">Proof Notebook</h2>
+        </div>
+
+        <Link
+          href="/evidence"
+          className="inline-flex items-center justify-center rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-300/15"
+        >
+          Open Evidence
+        </Link>
+      </div>
+
+      <div className="p-6">
+        {recentLogs.length > 0 ? (
+          <div className="space-y-3">
+            {recentLogs.map((log, index) => {
+              const signature = getEvidenceSignature(log);
+              const saved = savedSignatures[signature];
+              const result = getEvidenceResult(log);
+
+              return (
+                <div
+                  key={`${signature}-${index}`}
+                  className="rounded-2xl border border-white/10 bg-black/30 p-4"
+                >
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          {log.deviceId}
+                        </span>
+
+                        <span
+                          className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
+                            result === "PASS"
+                              ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+                              : result === "FAIL"
+                                ? "border-red-400/25 bg-red-500/10 text-red-300"
+                                : "border-cyan-400/25 bg-cyan-400/10 text-cyan-300"
+                          }`}
+                        >
+                          {result}
+                        </span>
+                      </div>
+
+                      <p className="font-mono text-sm text-emerald-200">
+                        {log.command}
+                      </p>
+
+                      <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-slate-500">
+                        {log.output}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => saveCommandAsEvidence(log)}
+                      disabled={saved}
+                      className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                        saved
+                          ? "cursor-default border border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+                          : "border border-white/10 bg-white/[0.05] text-slate-200 hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-emerald-200"
+                      }`}
+                    >
+                      {saved ? "Saved" : "Save Proof"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-5 text-sm leading-6 text-slate-500">
+            Run diagnostic commands in the terminal. Important command results
+            will appear here so they can be saved as evidence.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LabPage() {
   const { checkingAuth } = useRequireAuth();
 
@@ -443,8 +599,32 @@ export default function LabPage() {
   const [hint, setHint] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [savedSignatures, setSavedSignatures] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const terminalRef = useRef<HTMLDivElement | null>(null);
+
+  function syncSavedEvidenceState(currentLogs: CommandLog[]) {
+    const existingRecords = readEvidenceRecords();
+    const nextSavedSignatures: Record<string, boolean> = {};
+
+    for (const log of currentLogs) {
+      const matchedRecord = existingRecords.some(
+        (record) =>
+          record.sessionId === session?.sessionId &&
+          record.deviceId === log.deviceId &&
+          record.command === log.command &&
+          record.output === log.output,
+      );
+
+      if (matchedRecord) {
+        nextSavedSignatures[getEvidenceSignature(log)] = true;
+      }
+    }
+
+    setSavedSignatures(nextSavedSignatures);
+  }
 
   async function createNewSession(slug: string): Promise<LabSession> {
     const newSession = (await startLabSession(slug)) as LabSession;
@@ -458,15 +638,18 @@ export default function LabPage() {
     setHint("");
     setCommand("");
     setDeviceId("pc1");
+    setSavedSignatures({});
 
     try {
       const labData = (await getLabBySlug(slug)) as Lab;
 
       if (forceNew) {
         const newSession = await createNewSession(slug);
+        const nextLogs = getLogsFromSession(newSession);
+
         setLab(labData);
         setSession(newSession);
-        setLogs(getLogsFromSession(newSession));
+        setLogs(nextLogs);
         return;
       }
 
@@ -480,9 +663,11 @@ export default function LabPage() {
             savedSession.labSlug === slug &&
             savedSession.status !== "abandoned"
           ) {
+            const nextLogs = getLogsFromSession(savedSession);
+
             setLab(labData);
             setSession(savedSession);
-            setLogs(getLogsFromSession(savedSession));
+            setLogs(nextLogs);
             return;
           }
 
@@ -493,9 +678,11 @@ export default function LabPage() {
       }
 
       const newSession = await createNewSession(slug);
+      const nextLogs = getLogsFromSession(newSession);
+
       setLab(labData);
       setSession(newSession);
-      setLogs(getLogsFromSession(newSession));
+      setLogs(nextLogs);
     } catch (err) {
       setLoadError(
         err instanceof Error ? err.message : "Failed to load lab session.",
@@ -513,6 +700,7 @@ export default function LabPage() {
     async function loadInitialLab() {
       setLoading(true);
       setLoadError("");
+      setSavedSignatures({});
 
       try {
         const labData = (await getLabBySlug(labSlug)) as Lab;
@@ -528,9 +716,11 @@ export default function LabPage() {
               savedSession.labSlug === labSlug &&
               savedSession.status !== "abandoned"
             ) {
+              const nextLogs = getLogsFromSession(savedSession);
+
               setLab(labData);
               setSession(savedSession);
-              setLogs(getLogsFromSession(savedSession));
+              setLogs(nextLogs);
               setLoading(false);
               return;
             }
@@ -546,9 +736,11 @@ export default function LabPage() {
 
         if (cancelled) return;
 
+        const nextLogs = getLogsFromSession(newSession);
+
         setLab(labData);
         setSession(newSession);
-        setLogs(getLogsFromSession(newSession));
+        setLogs(nextLogs);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
@@ -574,6 +766,11 @@ export default function LabPage() {
     });
   }, [logs, deviceId]);
 
+  useEffect(() => {
+    syncSavedEvidenceState(logs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs, session?.sessionId]);
+
   async function startLab() {
     localStorage.removeItem(storageKey);
     await loadLabSession(labSlug, true);
@@ -581,8 +778,10 @@ export default function LabPage() {
 
   async function refreshSession(sessionId: string): Promise<LabSession> {
     const updatedSession = (await getLabSession(sessionId)) as LabSession;
+    const nextLogs = getLogsFromSession(updatedSession);
+
     setSession(updatedSession);
-    setLogs(getLogsFromSession(updatedSession));
+    setLogs(nextLogs);
     return updatedSession;
   }
 
@@ -671,6 +870,45 @@ export default function LabPage() {
     }
   }
 
+  function saveCommandAsEvidence(log: CommandLog) {
+    if (!session) return;
+
+    const existingRecords = readEvidenceRecords();
+
+    const alreadySaved = existingRecords.some(
+      (record) =>
+        record.sessionId === session.sessionId &&
+        record.deviceId === log.deviceId &&
+        record.command === log.command &&
+        record.output === log.output,
+    );
+
+    const signature = getEvidenceSignature(log);
+
+    if (alreadySaved) {
+      setSavedSignatures((prev) => ({ ...prev, [signature]: true }));
+      return;
+    }
+
+    const nextRecord: EvidenceRecord = {
+      id: createEvidenceId(),
+      ticketId,
+      ticketLabel: ticketContext?.id || "Standalone Lab",
+      ticketTitle: ticketContext?.title || lab?.title || "Lab Evidence",
+      labSlug,
+      labTitle: lab?.title || "Lab Simulator",
+      sessionId: session.sessionId,
+      deviceId: log.deviceId,
+      command: log.command,
+      output: log.output,
+      result: getEvidenceResult(log),
+      createdAt: new Date().toISOString(),
+    };
+
+    writeEvidenceRecords([nextRecord, ...existingRecords]);
+    setSavedSignatures((prev) => ({ ...prev, [signature]: true }));
+  }
+
   function getDeviceHealth(deviceIdToCheck: string) {
     const device = session?.state?.devices?.[deviceIdToCheck];
 
@@ -724,7 +962,9 @@ export default function LabPage() {
       }
     >
       <div className="mx-auto max-w-[1480px] p-4 lg:p-5">
-        {ticketContext ? <TicketContextBanner ticketContext={ticketContext} /> : null}
+        {ticketContext ? (
+          <TicketContextBanner ticketContext={ticketContext} />
+        ) : null}
 
         <section className="grid grid-cols-1 items-stretch gap-6 2xl:grid-cols-12">
           <section className="h-full 2xl:col-span-8">
@@ -765,7 +1005,13 @@ export default function LabPage() {
             />
           </div>
 
-          <div className="xl:col-span-8">
+          <div className="space-y-6 xl:col-span-8">
+            <EvidenceCapturePanel
+              logs={logs}
+              savedSignatures={savedSignatures}
+              saveCommandAsEvidence={saveCommandAsEvidence}
+            />
+
             <LearningCoachPanel category={lab?.category} title={lab?.title} />
           </div>
         </section>

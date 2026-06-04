@@ -2,8 +2,26 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import React from "react";
+import React, { useMemo, useSyncExternalStore } from "react";
 import AppShell from "@/components/layout/AppShell";
+
+type SavedEvidenceRecord = {
+  id: string;
+  ticketId: string | null;
+  ticketLabel: string;
+  ticketTitle: string;
+  labSlug: string;
+  labTitle: string;
+  sessionId: string;
+  deviceId: string;
+  command: string;
+  output: string;
+  result: "PASS" | "FAIL" | "INFO";
+  createdAt: string;
+};
+
+const EVIDENCE_STORAGE_KEY = "netlabs-evidence-records";
+const EVIDENCE_CHANGE_EVENT = "netlabs-evidence-records-change";
 
 const tickets = {
   "inc-014-dns-failure": {
@@ -62,6 +80,29 @@ const tickets = {
   },
 } as const;
 
+function getEvidenceSnapshot() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(EVIDENCE_STORAGE_KEY) || "";
+}
+
+function getEvidenceServerSnapshot() {
+  return "";
+}
+
+function subscribeToEvidence(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleChange = () => onStoreChange();
+
+  window.addEventListener("storage", handleChange);
+  window.addEventListener(EVIDENCE_CHANGE_EVENT, handleChange);
+
+  return () => {
+    window.removeEventListener("storage", handleChange);
+    window.removeEventListener(EVIDENCE_CHANGE_EVENT, handleChange);
+  };
+}
+
 function Badge({
   children,
   tone = "slate",
@@ -90,6 +131,140 @@ function severityTone(severity: string) {
   if (severity === "High") return "red";
   if (severity === "Medium") return "amber";
   return "green";
+}
+
+function resultTone(result: SavedEvidenceRecord["result"]) {
+  if (result === "PASS") {
+    return "border-emerald-400/25 bg-emerald-400/10 text-emerald-300";
+  }
+
+  if (result === "FAIL") {
+    return "border-red-400/25 bg-red-500/10 text-red-300";
+  }
+
+  return "border-cyan-400/25 bg-cyan-400/10 text-cyan-300";
+}
+
+function formatEvidenceTime(value: string) {
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Saved evidence";
+  }
+
+  return parsedDate.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function parseSavedEvidence(snapshot: string): SavedEvidenceRecord[] {
+  try {
+    const parsed = snapshot ? JSON.parse(snapshot) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function CollectedEvidence({
+  ticketId,
+  ticketLabel,
+}: {
+  ticketId: string;
+  ticketLabel: string;
+}) {
+  const evidenceSnapshot = useSyncExternalStore(
+    subscribeToEvidence,
+    getEvidenceSnapshot,
+    getEvidenceServerSnapshot,
+  );
+
+  const collectedEvidence = useMemo(() => {
+    return parseSavedEvidence(evidenceSnapshot).filter(
+      (record) =>
+        record.ticketId === ticketId ||
+        record.ticketLabel === ticketLabel ||
+        record.ticketLabel === ticketId,
+    );
+  }, [evidenceSnapshot, ticketId, ticketLabel]);
+
+  return (
+    <section className="rounded-3xl border border-white/[0.08] bg-slate-950/45 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-emerald-300">
+            Collected Evidence
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-100">
+            Proof saved during this investigation
+          </h2>
+        </div>
+
+        <Link
+          href="/evidence"
+          className="rounded-xl border border-emerald-400/35 bg-emerald-400/[0.06] px-4 py-2.5 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/[0.12]"
+        >
+          Open Evidence
+        </Link>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {collectedEvidence.length > 0 ? (
+          collectedEvidence.map((record) => (
+            <article
+              key={record.id}
+              className="rounded-2xl border border-white/[0.07] bg-black/25 p-4"
+            >
+              <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-white/10 bg-white/[0.05] px-2 py-0.5 font-mono text-[11px] text-slate-400">
+                      {record.deviceId}
+                    </span>
+
+                    <span
+                      className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${resultTone(
+                        record.result,
+                      )}`}
+                    >
+                      {record.result}
+                    </span>
+
+                    <span className="rounded-md border border-cyan-400/25 bg-cyan-400/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                      Saved From Lab
+                    </span>
+                  </div>
+
+                  <p className="mt-3 font-mono text-sm text-emerald-300">
+                    {record.command}
+                  </p>
+
+                  <pre className="mt-3 max-h-32 overflow-auto rounded-xl border border-white/[0.07] bg-black/35 p-3 text-xs leading-5 text-slate-500">
+                    {record.output}
+                  </pre>
+                </div>
+
+                <div className="shrink-0 text-left md:text-right">
+                  <p className="text-xs text-slate-500">Collected</p>
+                  <p className="mt-1 text-sm text-slate-300">
+                    {formatEvidenceTime(record.createdAt)}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-white/[0.07] bg-black/20 p-5 text-sm leading-6 text-slate-500">
+            No saved evidence for this case yet. Start the investigation, run
+            diagnostic commands, then save important outputs as proof.
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export default function TicketDetailPage() {
@@ -184,27 +359,31 @@ export default function TicketDetailPage() {
         </section>
 
         <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
-          <section className="rounded-3xl border border-white/[0.08] bg-slate-950/45 p-5">
-            <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-emerald-300">
-              Evidence Plan
-            </p>
+          <div className="space-y-4">
+            <CollectedEvidence ticketId={ticketId} ticketLabel={ticket.id} />
 
-            <div className="mt-4 space-y-3">
-              {ticket.expectedEvidence.map(([test, meaning]) => (
-                <div
-                  key={test}
-                  className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"
-                >
-                  <h3 className="text-sm font-semibold text-slate-100">
-                    {test}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
-                    {meaning}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
+            <section className="rounded-3xl border border-white/[0.08] bg-slate-950/45 p-5">
+              <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-emerald-300">
+                Evidence Plan
+              </p>
+
+              <div className="mt-4 space-y-3">
+                {ticket.expectedEvidence.map(([test, meaning]) => (
+                  <div
+                    key={test}
+                    className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"
+                  >
+                    <h3 className="text-sm font-semibold text-slate-100">
+                      {test}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {meaning}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
 
           <aside className="space-y-4">
             <section className="rounded-3xl border border-white/[0.08] bg-slate-950/45 p-5">
